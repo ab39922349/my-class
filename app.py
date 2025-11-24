@@ -7,7 +7,7 @@ import os
 import json
 
 # --- Page Config ---
-st.set_page_config(page_title="Classroom Assistant v4.3", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Classroom Assistant v4.4", page_icon="🎓", layout="wide")
 
 # --- CSS Styling ---
 st.markdown("""
@@ -44,7 +44,7 @@ if st.sidebar.button("Update List"):
 st.title("🎓 Classroom Assistant")
 st.markdown("---")
 
-# --- Seating Chart HTML Generator (Suspense Version) ---
+# --- Seating Chart HTML Generator ---
 def get_seating_chart_html(student_list):
     col_configs = [3, 4, 4, 5, 5, 3] 
     total_seats = sum(col_configs)
@@ -191,7 +191,6 @@ def get_seating_chart_html(student_list):
                 allSeats.forEach(s => s.classList.remove('active', 'winner'));
 
                 let steps = 0;
-                // Suspense Logic: 30-40 steps total
                 const totalSteps = 30 + Math.floor(Math.random() * 10); 
                 let currentSpeed = 50; 
                 let currentIndex = Math.floor(Math.random() * allSeats.length);
@@ -205,17 +204,13 @@ def get_seating_chart_html(student_list):
 
                     if (steps < totalSteps) {{
                         const remaining = totalSteps - steps;
-                        
-                        // Slow down in the last 15 steps
                         if (remaining < 15) {{
                             if (remaining < 5) {{
-                                // Super slow for the last few steps
                                 currentSpeed += 150; 
                             }} else {{
                                 currentSpeed += 40; 
                             }}
                         }}
-                        
                         setTimeout(nextStep, currentSpeed);
                     }} else {{
                         finalize(currentSeat);
@@ -238,21 +233,56 @@ def get_seating_chart_html(student_list):
     """
     return html_code
 
-# --- Tabs (Removed Wheel) ---
+# --- Tabs ---
 tab_pic, tab_seat, tab_group, tab_score, tab_timer = st.tabs(["🖼️ Look & Say", "🪑 Seating Chart", "👥 Groups", "🏆 Scoreboard", "⏱️ Timer"])
 
-# === Tab 0: Look & Say ===
+# === Tab 0: Look & Say (Updated Patterns) ===
 with tab_pic:
     st.header("🖼️ Look & Say: What is he/she doing?")
-    st.markdown('<div class="instruction">Please answer using the sentence patterns below:</div>', unsafe_allow_html=True)
+    st.markdown('<div class="instruction">Please use the pattern: <b>"I think he/she is..., because..."</b></div>', unsafe_allow_html=True)
+    
+    # --- 📝 UPDATED SENTENCE MAP ---
     sentence_map = {
-        "lie": ["He/She is lying because...", "I think he/she is telling a lie since...", "Look at his/her face! It looks fake because..."],
-        "lying": ["He/She is lying because...", "I don't believe him/her because...", "He/She is hiding the truth that..."],
-        "run": ["He/She is running fast because...", "He/She is in a hurry to...", "Maybe he/she is late for..."],
-        "eat": ["He/She is eating ______ because...", "The food looks delicious, so he/she...", "He/She is having lunch at..."],
-        "sleep": ["He/She is sleeping because...", "He/She must be very tired from...", "He/She is dreaming about..."]
+        # Lie / Lying / Fake
+        "lie": [
+            "I think he/she is lying, because he looks nervous.",
+            "I think he/she is telling a lie, because his nose is growing.",
+            "I think he/she is being dishonest, because he is hiding something."
+        ],
+        "lying": [
+            "I think he/she is lying, because he looks uncomfortable.",
+            "I think he/she is faking it, because his smile looks fake.",
+            "I think he/she is not telling the truth, because..."
+        ],
+        
+        # Run / Running
+        "run": [
+            "I think he/she is running, because he is late for school.",
+            "I think he/she is rushing, because the bus is leaving.",
+            "I think he/she is exercising, because he wants to be healthy."
+        ],
+        
+        # Eat / Eating
+        "eat": [
+            "I think he/she is eating a burger, because he looks hungry.",
+            "I think he/she is having lunch, because it is noon.",
+            "I think he/she is enjoying the meal, because it looks delicious."
+        ],
+        
+        # Sleep / Sleeping
+        "sleep": [
+            "I think he/she is sleeping, because he is very tired.",
+            "I think he/she is taking a nap, because he worked hard today.",
+            "I think he/she is dreaming, because he is smiling in his sleep."
+        ]
     }
-    default_sentences = ["He/She is [ v-ing ] because...", "I think he/she looks [ adjective ]...", "In this picture, the person is..."]
+    
+    # 📌 UPDATED DEFAULT PATTERNS
+    default_sentences = [
+        "I think he/she is __________, because __________.",
+        "I think he/she looks __________, because __________.",
+        "I think the person is __________, because __________."
+    ]
     
     col_btn, col_img = st.columns([1, 3])
     with col_btn:
