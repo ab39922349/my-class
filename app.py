@@ -7,7 +7,7 @@ import os
 import json
 
 # --- Page Config ---
-st.set_page_config(page_title="Classroom Assistant v7.0", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Classroom Assistant v7.2", page_icon="🎓", layout="wide")
 
 # --- CSS Styling ---
 st.markdown("""
@@ -20,20 +20,21 @@ st.markdown("""
     
     /* Group Card Styling */
     .group-card {
-        background-color: #f0f2f6;
+        background-color: #fff;
         padding: 15px;
         border-radius: 10px;
         border: 2px solid #d1d5db;
         margin-bottom: 10px;
         text-align: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
     .group-title { font-size: 20px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;}
-    .group-score { font-size: 32px; font-weight: bold; color: #e74c3c; margin: 10px 0; }
-    .group-members { color: #555; font-size: 14px; min-height: 40px;}
+    .group-score { font-size: 36px; font-weight: 900; color: #e74c3c; margin: 5px 0; }
+    .group-members { color: #555; font-size: 14px; min-height: 40px; border-top: 1px dashed #eee; padding-top: 5px;}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 💾 DATA PERSISTENCE ---
+# --- 💾 DATA PERSISTENCE (Individual Scores Only) ---
 DATA_FILE = "classroom_data.csv"
 DEFAULT_STUDENTS = [
     "Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace", 
@@ -72,15 +73,15 @@ def load_data():
 if 'students' not in st.session_state or 'scores' not in st.session_state:
     l_students, l_scores = load_data()
     st.session_state.students = l_students
-    st.session_state.scores = l_scores
+    st.session_state.scores = l_scores # INDIVIDUAL SCORES
 
 if 'current_image' not in st.session_state: st.session_state.current_image = None
 if 'current_image_name' not in st.session_state: st.session_state.current_image_name = ""
 if 'available_images' not in st.session_state: st.session_state.available_images = []
 
-# ✨ NEW: Store Groups in Session State
-if 'groups' not in st.session_state:
-    st.session_state.groups = []
+# ✨ NEW: Group State & Group Scores (Separate!)
+if 'groups' not in st.session_state: st.session_state.groups = []
+if 'group_scores' not in st.session_state: st.session_state.group_scores = {}
 
 # --- Sidebar: Settings ---
 st.sidebar.header("⚙️ Settings")
@@ -95,18 +96,20 @@ if st.sidebar.button("Update List"):
         st.session_state.students = new_list
         st.session_state.scores = new_scores
         save_data(new_list, new_scores)
-        st.session_state.groups = [] # Reset groups if list changes
+        st.session_state.groups = [] # Reset groups on list change
+        st.session_state.group_scores = {}
         st.success("List updated!")
         time.sleep(0.5)
         st.rerun()
 
 st.sidebar.markdown("---")
-if st.sidebar.button("⚠️ Reset All Data"):
+if st.sidebar.button("⚠️ Factory Reset"):
     if os.path.exists(DATA_FILE): os.remove(DATA_FILE)
     st.session_state.students = DEFAULT_STUDENTS
     st.session_state.scores = {name: 0 for name in DEFAULT_STUDENTS}
     st.session_state.groups = []
-    st.sidebar.success("Data reset!")
+    st.session_state.group_scores = {}
+    st.sidebar.success("Data reset to default!")
     time.sleep(0.5)
     st.rerun()
 
@@ -299,7 +302,6 @@ with tab_pic:
         "sleep": ["I think he/she is sleeping, because he is very tired.", "I think he/she is taking a nap, because he worked hard today.", "I think he/she is dreaming, because he is smiling in his sleep."]
     }
     default_sentences = ["I think he/she is __________, because __________.", "I think he/she looks __________, because __________.", "I think the person is __________, because __________."]
-    
     col_btn, col_img = st.columns([1, 3])
     with col_btn:
         if st.button("📸 Pick Random Image", type="primary", use_container_width=True):
@@ -349,41 +351,43 @@ with tab_seat:
         chart_html = get_seating_chart_html(st.session_state.students)
         components.html(chart_html, height=600)
 
-# === Tab 2: Group Battle (MAJOR UPDATE) ===
+# === Tab 2: Group Battle (DECOUPLED) ===
 with tab_group:
     st.header("⚔️ Group Battle Mode")
     
-    # 1. Generator Controls
+    # 1. Generator
     c_gen, c_info = st.columns([1, 2])
     with c_gen:
         g_size = st.number_input("Group Size", 2, 10, 4)
         if st.button("🚀 Generate New Groups"):
             shuffled = st.session_state.students.copy()
             random.shuffle(shuffled)
-            # Create list of lists
             groups = [shuffled[i:i + g_size] for i in range(0, len(shuffled), g_size)]
-            st.session_state.groups = groups # Save to session
-            st.success("Groups generated!")
+            
+            st.session_state.groups = groups 
+            # Initialize Group Scores (Indices)
+            st.session_state.group_scores = {i: 0 for i in range(len(groups))}
+            
+            st.success("Groups generated & Scores reset!")
             st.rerun()
             
     with c_info:
         if st.session_state.groups:
-            if st.button("🗑️ Clear Groups"):
-                st.session_state.groups = []
+            if st.button("🗑️ Reset Group Scores"):
+                # Only reset group_scores, not individual scores
+                st.session_state.group_scores = {i: 0 for i in range(len(st.session_state.groups))}
+                st.toast("Group scores cleared!")
+                time.sleep(0.5)
                 st.rerun()
         else:
             st.info("👈 Set size and click Generate to start battle!")
 
     st.divider()
 
-    # 2. Battle Dashboard (Display Groups)
+    # 2. Group Dashboard
     if st.session_state.groups:
-        # Calculate how many columns per row (max 4 for visibility)
         num_groups = len(st.session_state.groups)
         cols_per_row = 3 
-        
-        # Iterate through groups and display them
-        # We process in chunks of 3 for layout
         for i in range(0, num_groups, cols_per_row):
             row_cols = st.columns(cols_per_row)
             for j in range(cols_per_row):
@@ -392,33 +396,23 @@ with tab_group:
                     group_members = st.session_state.groups[group_idx]
                     
                     with row_cols[j]:
-                        # Calculate Group Total Score
-                        group_total = sum(st.session_state.scores.get(s, 0) for s in group_members)
+                        # Get Decoupled Score from group_scores dict
+                        g_score = st.session_state.group_scores.get(group_idx, 0)
                         
-                        # Render Card using HTML/CSS inside Markdown for style
                         st.markdown(f"""
                         <div class="group-card">
                             <div class="group-title">🛡️ Group {group_idx + 1}</div>
-                            <div class="group-score">{group_total} pts</div>
-                            <div class="group-members">
-                                {', '.join(group_members)}
-                            </div>
+                            <div class="group-score">{g_score} pts</div>
+                            <div class="group-members">{', '.join(group_members)}</div>
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Add Point Button (Native Streamlit Button for logic)
-                        if st.button(f"➕ Add Point to Group {group_idx + 1}", key=f"btn_g_{group_idx}", use_container_width=True):
-                            # Add 1 point to EVERY member of this group
-                            for member in group_members:
-                                st.session_state.scores[member] += 1
-                            
-                            # Save and Refresh
-                            save_data(st.session_state.students, st.session_state.scores)
-                            st.toast(f"🎉 Group {group_idx + 1} scored! Everyone gets +1 point!")
-                            time.sleep(0.5)
+                        # Add Point (Only modifies group_scores)
+                        if st.button(f"➕ Add Point to G{group_idx + 1}", key=f"btn_g_{group_idx}", use_container_width=True):
+                            st.session_state.group_scores[group_idx] += 1
                             st.rerun()
 
-# === Tab 3: Scoreboard ===
+# === Tab 3: Scoreboard (Individual) ===
 with tab_score:
     st.header("🏆 Scoreboard (Individual)")
     cd, ca = st.columns([2, 1])
@@ -427,12 +421,24 @@ with tab_score:
         if current_students:
             sel_stu = st.selectbox("Select Student", current_students)
             pts = st.number_input("Points", -10, 10, 1)
-            if st.button("Update Score"):
-                st.session_state.scores[sel_stu] += pts
-                save_data(st.session_state.students, st.session_state.scores)
-                st.success(f"{sel_stu}'s score updated!")
-                time.sleep(0.5)
-                st.rerun()
+            
+            c_update, c_clear = st.columns(2)
+            with c_update:
+                if st.button("Update Score", use_container_width=True):
+                    st.session_state.scores[sel_stu] += pts
+                    save_data(st.session_state.students, st.session_state.scores)
+                    st.success(f"Updated!")
+                    time.sleep(0.5)
+                    st.rerun()
+            
+            with c_clear:
+                if st.button("🗑️ Reset Individuals", use_container_width=True):
+                    st.session_state.scores = {name: 0 for name in st.session_state.students}
+                    save_data(st.session_state.students, st.session_state.scores)
+                    st.success("Individual scores cleared!")
+                    time.sleep(0.5)
+                    st.rerun()
+                    
         else: st.warning("No students available.")
     with cd:
         score_data = [{"Name": n, "Score": st.session_state.scores.get(n, 0)} for n in st.session_state.students]
