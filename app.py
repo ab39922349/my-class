@@ -5,10 +5,9 @@ import time
 import pandas as pd
 import os
 import json
-from datetime import datetime
 
 # --- Page Config ---
-st.set_page_config(page_title="Classroom Assistant v8.0", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Classroom Assistant v8.1", page_icon="🎓", layout="wide")
 
 # --- CSS Styling ---
 st.markdown("""
@@ -84,6 +83,7 @@ if 'group_scores' not in st.session_state: st.session_state.group_scores = {}
 
 # ✨ TIMER STATE
 if 'timer_end_time' not in st.session_state: st.session_state.timer_end_time = 0
+if 'timer_running' not in st.session_state: st.session_state.timer_running = False
 
 # --- Sidebar: Settings & Timer ---
 st.sidebar.header("⏱️ Floating Timer")
@@ -94,13 +94,14 @@ col_t1, col_t2 = st.sidebar.columns(2)
 with col_t1:
     if st.sidebar.button("▶ Start", type="primary"):
         duration = (t_min * 60) + t_sec
-        # Set the future timestamp when timer ends
         st.session_state.timer_end_time = time.time() + duration
+        st.session_state.timer_running = True
         st.rerun()
 
 with col_t2:
     if st.sidebar.button("⏹ Stop"):
         st.session_state.timer_end_time = 0
+        st.session_state.timer_running = False
         st.rerun()
 
 st.sidebar.divider()
@@ -133,75 +134,86 @@ if st.sidebar.button("⚠️ Factory Reset"):
     time.sleep(0.5)
     st.rerun()
 
-# --- 🕒 FLOATING TIMER HTML INJECTION ---
-def get_floating_timer_html(end_time):
-    # Pass the absolute timestamp to JS
-    # JS handles the countdown, so it doesn't block Python
-    html = f"""
-    <div id="floating-timer" style="
-        position: fixed; 
-        bottom: 20px; 
-        right: 20px; 
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-        color: white; 
-        padding: 15px 25px; 
-        border-radius: 50px; 
-        font-family: Arial, sans-serif; 
-        font-size: 24px; 
-        font-weight: bold; 
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
-        z-index: 999999; 
-        display: none;
-        transition: transform 0.2s;
-    ">
-        <span id="timer-display">00:00</span>
-    </div>
-
+# --- 🕒 JS INJECTION FOR TIMER (Pop-out method) ---
+def get_timer_script(end_time, is_running):
+    # If not running, we just want to remove the element if it exists
+    if not is_running:
+        return """
+        <script>
+            const doc = window.parent.document;
+            const existing = doc.getElementById('custom-floating-timer');
+            if (existing) { existing.remove(); }
+        </script>
+        """
+    
+    # If running, we inject/update it
+    return f"""
     <script>
-        const endTime = {end_time};
-        const timerDiv = document.getElementById('floating-timer');
-        const display = document.getElementById('timer-display');
+        (function() {{
+            const endTime = {end_time};
+            const doc = window.parent.document;
+            
+            // Check if element exists, if not create it
+            let timerDiv = doc.getElementById('custom-floating-timer');
+            if (!timerDiv) {{
+                timerDiv = doc.createElement('div');
+                timerDiv.id = 'custom-floating-timer';
+                timerDiv.style.position = 'fixed';
+                timerDiv.style.bottom = '20px';
+                timerDiv.style.right = '20px';
+                timerDiv.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                timerDiv.style.color = 'white';
+                timerDiv.style.padding = '15px 25px';
+                timerDiv.style.borderRadius = '50px';
+                timerDiv.style.fontFamily = 'Arial, sans-serif';
+                timerDiv.style.fontSize = '28px';
+                timerDiv.style.fontWeight = 'bold';
+                timerDiv.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
+                timerDiv.style.zIndex = '999999';
+                timerDiv.style.transition = 'transform 0.2s, background 0.5s';
+                timerDiv.innerHTML = '00:00';
+                doc.body.appendChild(timerDiv);
+            }}
 
-        function updateTimer() {{
-            const now = Date.now() / 1000;
-            const remaining = endTime - now;
-
-            if (remaining > 0) {{
-                timerDiv.style.display = 'block';
-                const m = Math.floor(remaining / 60);
-                const s = Math.floor(remaining % 60);
-                display.innerText = 
-                    (m < 10 ? "0" + m : m) + ":" + 
-                    (s < 10 ? "0" + s : s);
+            function updateTimer() {{
+                const now = Date.now() / 1000;
+                const remaining = endTime - now;
                 
-                // Visual alert when time is low (< 10s)
-                if (remaining < 10) {{
-                    timerDiv.style.background = 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)';
-                    timerDiv.style.transform = (Math.floor(remaining * 2) % 2 === 0) ? 'scale(1.1)' : 'scale(1)';
-                }}
-            }} else {{
-                // Time's up
-                if (remaining > -5) {{ // Show "Time's Up" for 5 seconds then hide
-                    timerDiv.style.display = 'block';
-                    timerDiv.style.background = '#e74c3c';
-                    display.innerText = "TIME'S UP!";
+                // Security check: if user stopped timer in python, remove div
+                // (We can't easily check python state here, so we rely on the 'remove' script sent when Stopped)
+
+                if (remaining > 0) {{
+                    const m = Math.floor(remaining / 60);
+                    const s = Math.floor(remaining % 60);
+                    const text = (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+                    timerDiv.innerText = text;
+                    
+                    // Alert mode
+                    if (remaining < 10) {{
+                        timerDiv.style.background = 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)';
+                        timerDiv.style.transform = (Math.floor(remaining * 2) % 2 === 0) ? 'scale(1.1)' : 'scale(1)';
+                    }} else {{
+                        timerDiv.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                        timerDiv.style.transform = 'scale(1)';
+                    }}
                 }} else {{
-                    timerDiv.style.display = 'none';
+                    timerDiv.innerText = "TIME'S UP!";
+                    timerDiv.style.background = '#e74c3c';
+                    timerDiv.style.transform = 'scale(1.2)';
                 }}
             }}
-        }}
 
-        if (endTime > 0) {{
-            setInterval(updateTimer, 500);
+            // Clear any old intervals to prevent stacking
+            if (window.myTimerInterval) clearInterval(window.myTimerInterval);
+            window.myTimerInterval = setInterval(updateTimer, 500);
             updateTimer();
-        }}
+        }})();
     </script>
     """
-    return html
 
-# Inject Timer if active
-if st.session_state.timer_end_time > time.time():
-    components.html(get_floating_timer_html(st.session_state.timer_end_time), height=0)
+# Inject the JS
+script_html = get_timer_script(st.session_state.timer_end_time, st.session_state.timer_running)
+components.html(script_html, height=0)
 
 # --- MAIN APP CONTENT ---
 st.title("🎓 Classroom Assistant")
@@ -442,11 +454,10 @@ with tab_seat:
         chart_html = get_seating_chart_html(st.session_state.students)
         components.html(chart_html, height=600)
 
-# === Tab 2: Group Battle (DECOUPLED) ===
+# === Tab 2: Group Battle (DECOUPLED & FIXED) ===
 with tab_group:
     st.header("⚔️ Group Battle Mode")
     
-    # 1. Generator
     c_gen, c_info = st.columns([1, 2])
     with c_gen:
         g_size = st.number_input("Group Size", 2, 10, 4)
@@ -454,11 +465,8 @@ with tab_group:
             shuffled = st.session_state.students.copy()
             random.shuffle(shuffled)
             groups = [shuffled[i:i + g_size] for i in range(0, len(shuffled), g_size)]
-            
             st.session_state.groups = groups 
-            # Initialize Group Scores (Indices)
             st.session_state.group_scores = {i: 0 for i in range(len(groups))}
-            
             st.success("Groups generated & Scores reset!")
             st.rerun()
             
@@ -474,7 +482,6 @@ with tab_group:
 
     st.divider()
 
-    # 2. Group Dashboard
     if st.session_state.groups:
         num_groups = len(st.session_state.groups)
         cols_per_row = 3 
@@ -486,6 +493,7 @@ with tab_group:
                     group_members = st.session_state.groups[group_idx]
                     
                     with row_cols[j]:
+                        # 🛠️ AUTO-FIX for KeyError
                         if group_idx not in st.session_state.group_scores:
                             st.session_state.group_scores[group_idx] = 0
 
@@ -529,7 +537,6 @@ with tab_score:
                     st.success("Individual scores cleared!")
                     time.sleep(0.5)
                     st.rerun()
-                    
         else: st.warning("No students available.")
     with cd:
         score_data = [{"Name": n, "Score": st.session_state.scores.get(n, 0)} for n in st.session_state.students]
