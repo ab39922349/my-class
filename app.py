@@ -7,7 +7,7 @@ import os
 import json
 
 # --- Page Config ---
-st.set_page_config(page_title="Classroom Assistant v4.2", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Classroom Assistant v4.3", page_icon="🎓", layout="wide")
 
 # --- CSS Styling ---
 st.markdown("""
@@ -17,10 +17,6 @@ st.markdown("""
     .sentence-box { background-color: #e8f4f8; border-left: 6px solid #3498db; padding: 20px; margin-top: 15px; border-radius: 5px; }
     .sentence-title { color: #2980b9; font-weight: bold; font-size: 18px; margin-bottom: 10px; }
     .sentence-item { font-size: 22px; color: #2c3e50; margin-bottom: 8px; font-family: sans-serif; }
-    
-    /* PK Mode Styles */
-    .pk-name { font-size: 40px; font-weight: bold; color: #2c3e50; text-align: center; background-color: #f8f9fa; padding: 20px; border-radius: 10px; border: 2px solid #dee2e6;}
-    .vs-sign { font-size: 60px; font-weight: 900; color: #FF4B4B; text-align: center; font-style: italic; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -48,119 +44,7 @@ if st.sidebar.button("Update List"):
 st.title("🎓 Classroom Assistant")
 st.markdown("---")
 
-# --- 1. Wheel HTML Generator ---
-def get_wheel_html(names_list):
-    names_json = json.dumps(names_list)
-    html_code = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: 'Arial', sans-serif; text-align: center; margin: 0; }}
-            #wheel-container {{ position: relative; width: 500px; height: 500px; margin: 0 auto; }}
-            #spinBtn {{
-                position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                width: 80px; height: 80px; background: white; border-radius: 50%;
-                border: 4px solid #333; font-weight: bold; font-size: 20px; cursor: pointer;
-                box-shadow: 0 0 10px rgba(0,0,0,0.3); z-index: 10;
-            }}
-            #spinBtn:hover {{ background: #f0f0f0; }}
-            #arrow {{
-                position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
-                width: 0; height: 0; 
-                border-left: 20px solid transparent; border-right: 20px solid transparent; border-top: 40px solid #FF4B4B;
-                z-index: 5;
-            }}
-            #result {{ margin-top: 20px; font-size: 30px; font-weight: bold; color: #E71D36; min-height: 40px;}}
-            canvas {{ pointer-events: none; }}
-        </style>
-    </head>
-    <body>
-        <div id="result">Ready to spin...</div>
-        <div id="wheel-container">
-            <div id="arrow"></div>
-            <canvas id="canvas" width="500" height="500"></canvas>
-            <button id="spinBtn" onclick="spin()">SPIN</button>
-        </div>
-        <script>
-            const names = {names_json};
-            const colors = ["#FFADAD", "#FFD6A5", "#FDFFB6", "#CAFFBF", "#9BF6FF", "#A0C4FF", "#BDB2FF", "#FFC6FF"];
-            let startAngle = 0;
-            let arc = Math.PI * 2 / names.length;
-            let spinTimeout = null;
-            let spinAngleStart = 10;
-            let spinTime = 0;
-            let spinTimeTotal = 0;
-            let ctx;
-
-            function drawRouletteWheel() {{
-                const canvas = document.getElementById("canvas");
-                if (canvas.getContext) {{
-                    const outsideRadius = 200;
-                    const textRadius = 160;
-                    const insideRadius = 50;
-                    ctx = canvas.getContext("2d");
-                    ctx.clearRect(0,0,500,500);
-                    ctx.strokeStyle = "white";
-                    ctx.lineWidth = 2;
-                    ctx.font = 'bold 16px Helvetica, Arial';
-                    for(let i = 0; i < names.length; i++) {{
-                        const angle = startAngle + i * arc;
-                        ctx.fillStyle = colors[i % colors.length];
-                        ctx.beginPath();
-                        ctx.arc(250, 250, outsideRadius, angle, angle + arc, false);
-                        ctx.arc(250, 250, insideRadius, angle + arc, angle, true);
-                        ctx.stroke();
-                        ctx.fill();
-                        ctx.save();
-                        ctx.fillStyle = "black";
-                        ctx.translate(250 + Math.cos(angle + arc / 2) * textRadius, 
-                                    250 + Math.sin(angle + arc / 2) * textRadius);
-                        ctx.rotate(angle + arc / 2 + Math.PI / 2);
-                        const text = names[i];
-                        ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
-                        ctx.restore();
-                    }} 
-                }}
-            }}
-            function spin() {{
-                spinAngleStart = Math.random() * 10 + 10;
-                spinTime = 0;
-                spinTimeTotal = Math.random() * 3 + 4 * 1000;
-                rotateWheel();
-            }}
-            function rotateWheel() {{
-                spinTime += 30;
-                if(spinTime >= spinTimeTotal) {{
-                    stopRotateWheel();
-                    return;
-                }}
-                const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
-                startAngle += (spinAngle * Math.PI / 180);
-                drawRouletteWheel();
-                spinTimeout = setTimeout('rotateWheel()', 30);
-            }}
-            function stopRotateWheel() {{
-                clearTimeout(spinTimeout);
-                const degrees = startAngle * 180 / Math.PI + 90;
-                const arcd = arc * 180 / Math.PI;
-                const index = Math.floor((360 - degrees % 360) / arcd);
-                const text = names[index];
-                document.getElementById("result").innerHTML = "🎉 " + text + " 🎉";
-            }}
-            function easeOut(t, b, c, d) {{
-                const ts = (t/=d)*t;
-                const tc = ts*t;
-                return b+c*(tc + -3*ts + 3*t);
-            }}
-            drawRouletteWheel();
-        </script>
-    </body>
-    </html>
-    """
-    return html_code
-
-# --- 2. Seating Chart HTML Generator (Updated) ---
+# --- Seating Chart HTML Generator (Suspense Version) ---
 def get_seating_chart_html(student_list):
     col_configs = [3, 4, 4, 5, 5, 3] 
     total_seats = sum(col_configs)
@@ -307,7 +191,7 @@ def get_seating_chart_html(student_list):
                 allSeats.forEach(s => s.classList.remove('active', 'winner'));
 
                 let steps = 0;
-                // Increased base steps to make it run longer (30-40 steps)
+                // Suspense Logic: 30-40 steps total
                 const totalSteps = 30 + Math.floor(Math.random() * 10); 
                 let currentSpeed = 50; 
                 let currentIndex = Math.floor(Math.random() * allSeats.length);
@@ -322,14 +206,12 @@ def get_seating_chart_html(student_list):
                     if (steps < totalSteps) {{
                         const remaining = totalSteps - steps;
                         
-                        // New Deceleration Logic for extra suspense
+                        // Slow down in the last 15 steps
                         if (remaining < 15) {{
-                            // Start slowing down noticeably in the last 15 steps
                             if (remaining < 5) {{
-                                // The "Crawl" Phase: Super slow for the last few steps
+                                // Super slow for the last few steps
                                 currentSpeed += 150; 
                             }} else {{
-                                // The "Slow" Phase
                                 currentSpeed += 40; 
                             }}
                         }}
@@ -356,8 +238,8 @@ def get_seating_chart_html(student_list):
     """
     return html_code
 
-# --- Tabs ---
-tab_pic, tab_seat, tab1, tab2, tab3, tab4 = st.tabs(["🖼️ Look & Say", "🪑 Seating Chart", "🎡 Lucky Wheel", "👥 Groups", "🏆 Scoreboard", "⏱️ Timer"])
+# --- Tabs (Removed Wheel) ---
+tab_pic, tab_seat, tab_group, tab_score, tab_timer = st.tabs(["🖼️ Look & Say", "🪑 Seating Chart", "👥 Groups", "🏆 Scoreboard", "⏱️ Timer"])
 
 # === Tab 0: Look & Say ===
 with tab_pic:
@@ -415,28 +297,8 @@ with tab_seat:
         chart_html = get_seating_chart_html(st.session_state.students)
         components.html(chart_html, height=600)
 
-# === Tab 1: Lucky Wheel ===
-with tab1:
-    st.header("🎡 Lucky Wheel")
-    mode = st.radio("Select Mode", ["🎡 Wheel Mode", "⚔️ PK Mode (1 VS 1)"], horizontal=True)
-    if mode == "🎡 Wheel Mode":
-        if not st.session_state.students: st.error("List is empty!")
-        elif len(st.session_state.students) < 2: st.warning("Need at least 2 students!")
-        else: components.html(get_wheel_html(st.session_state.students), height=600)
-    elif mode == "⚔️ PK Mode (1 VS 1)":
-        if st.button("Pick 2 Fighters!", type="primary"):
-            if len(st.session_state.students) < 2: st.error("Not enough students!")
-            else:
-                fighters = random.sample(st.session_state.students, 2)
-                p1, p2 = fighters[0], fighters[1]
-                c1, c2, c3 = st.columns([2, 1, 2])
-                with c1: st.markdown(f'<div class="pk-name">{p1}</div>', unsafe_allow_html=True)
-                with c2: st.markdown('<div class="vs-sign">VS</div>', unsafe_allow_html=True)
-                with c3: st.markdown(f'<div class="pk-name">{p2}</div>', unsafe_allow_html=True)
-                st.snow()
-
 # === Tab 2: Groups ===
-with tab2:
+with tab_group:
     st.header("👥 Group Generator")
     g_size = st.number_input("Group Size", 2, 10, 3)
     if st.button("Generate Groups"):
@@ -450,7 +312,7 @@ with tab2:
                 st.success(", ".join(group))
 
 # === Tab 3: Scoreboard ===
-with tab3:
+with tab_score:
     st.header("🏆 Scoreboard")
     cd, ca = st.columns([2, 1])
     with ca:
@@ -464,7 +326,7 @@ with tab3:
         st.dataframe(df, use_container_width=True, hide_index=True)
 
 # === Tab 4: Timer ===
-with tab4:
+with tab_timer:
     st.header("⏱️ Timer")
     c1, c2 = st.columns(2)
     mins = c1.number_input("Minutes", 0, 60, 1)
