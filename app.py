@@ -7,7 +7,7 @@ import os
 import json
 
 # --- Page Config ---
-st.set_page_config(page_title="Classroom Assistant v4.4", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Classroom Assistant v4.5", page_icon="🎓", layout="wide")
 
 # --- CSS Styling ---
 st.markdown("""
@@ -29,6 +29,10 @@ if 'current_image' not in st.session_state:
     st.session_state.current_image = None
 if 'current_image_name' not in st.session_state:
     st.session_state.current_image_name = ""
+    
+# ✨ NEW: Track available images for no-repeat logic
+if 'available_images' not in st.session_state:
+    st.session_state.available_images = []
 
 # --- Sidebar: Settings ---
 st.sidebar.header("⚙️ Settings")
@@ -236,71 +240,60 @@ def get_seating_chart_html(student_list):
 # --- Tabs ---
 tab_pic, tab_seat, tab_group, tab_score, tab_timer = st.tabs(["🖼️ Look & Say", "🪑 Seating Chart", "👥 Groups", "🏆 Scoreboard", "⏱️ Timer"])
 
-# === Tab 0: Look & Say (Updated Patterns) ===
+# === Tab 0: Look & Say (No-Repeat Logic) ===
 with tab_pic:
     st.header("🖼️ Look & Say: What is he/she doing?")
     st.markdown('<div class="instruction">Please use the pattern: <b>"I think he/she is..., because..."</b></div>', unsafe_allow_html=True)
     
-    # --- 📝 UPDATED SENTENCE MAP ---
+    # --- Sentence Map ---
     sentence_map = {
-        # Lie / Lying / Fake
-        "lie": [
-            "I think he/she is lying, because he looks nervous.",
-            "I think he/she is telling a lie, because his nose is growing.",
-            "I think he/she is being dishonest, because he is hiding something."
-        ],
-        "lying": [
-            "I think he/she is lying, because he looks uncomfortable.",
-            "I think he/she is faking it, because his smile looks fake.",
-            "I think he/she is not telling the truth, because..."
-        ],
-        
-        # Run / Running
-        "run": [
-            "I think he/she is running, because he is late for school.",
-            "I think he/she is rushing, because the bus is leaving.",
-            "I think he/she is exercising, because he wants to be healthy."
-        ],
-        
-        # Eat / Eating
-        "eat": [
-            "I think he/she is eating a burger, because he looks hungry.",
-            "I think he/she is having lunch, because it is noon.",
-            "I think he/she is enjoying the meal, because it looks delicious."
-        ],
-        
-        # Sleep / Sleeping
-        "sleep": [
-            "I think he/she is sleeping, because he is very tired.",
-            "I think he/she is taking a nap, because he worked hard today.",
-            "I think he/she is dreaming, because he is smiling in his sleep."
-        ]
+        "lie": ["I think he/she is lying, because he looks nervous.", "I think he/she is telling a lie, because his nose is growing.", "I think he/she is being dishonest, because he is hiding something."],
+        "lying": ["I think he/she is lying, because he looks uncomfortable.", "I think he/she is faking it, because his smile looks fake.", "I think he/she is not telling the truth, because..."],
+        "run": ["I think he/she is running, because he is late for school.", "I think he/she is rushing, because the bus is leaving.", "I think he/she is exercising, because he wants to be healthy."],
+        "eat": ["I think he/she is eating a burger, because he looks hungry.", "I think he/she is having lunch, because it is noon.", "I think he/she is enjoying the meal, because it looks delicious."],
+        "sleep": ["I think he/she is sleeping, because he is very tired.", "I think he/she is taking a nap, because he worked hard today.", "I think he/she is dreaming, because he is smiling in his sleep."]
     }
-    
-    # 📌 UPDATED DEFAULT PATTERNS
-    default_sentences = [
-        "I think he/she is __________, because __________.",
-        "I think he/she looks __________, because __________.",
-        "I think the person is __________, because __________."
-    ]
+    default_sentences = ["I think he/she is __________, because __________.", "I think he/she looks __________, because __________.", "I think the person is __________, because __________."]
     
     col_btn, col_img = st.columns([1, 3])
     with col_btn:
+        # 顯示目前牌庫狀況 (Optional)
+        remaining = len(st.session_state.available_images)
+        st.write(f"Images left: **{remaining}**")
+
         if st.button("📸 Pick Random Image", type="primary", use_container_width=True):
             script_dir = os.path.dirname(os.path.abspath(__file__)) 
             folder_path = os.path.join(script_dir, "images")
+            
             if not os.path.exists(folder_path):
                 st.error(f"⚠️ Image folder not found!\nPath: {folder_path}")
             else:
                 valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
                 try:
-                    files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in valid_extensions]
-                    if not files: st.warning("⚠️ The 'images' folder is empty!")
+                    # 1. 取得所有檔案
+                    all_files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in valid_extensions]
+                    
+                    if not all_files:
+                        st.warning("⚠️ The 'images' folder is empty!")
                     else:
-                        selected_img = random.choice(files)
-                        st.session_state.current_image = os.path.join(folder_path, selected_img)
-                        st.session_state.current_image_name = selected_img.lower()
+                        # 2. 檢查牌庫是否需要重置 (空的，或是檔案數量跟之前不對)
+                        if not st.session_state.available_images:
+                            st.session_state.available_images = all_files.copy()
+                            random.shuffle(st.session_state.available_images)
+                            st.toast("🔄 All images shown! Reshuffling deck...", icon="🔀")
+                        
+                        # 3. 從牌庫抽一張 (Pop)
+                        # 為了保險起見，檢查一下 pop 出來的檔案是否還在硬碟上
+                        while st.session_state.available_images:
+                            selected_img = st.session_state.available_images.pop()
+                            full_path = os.path.join(folder_path, selected_img)
+                            if os.path.exists(full_path):
+                                st.session_state.current_image = full_path
+                                st.session_state.current_image_name = selected_img.lower()
+                                break
+                            
                 except Exception as e: st.error(f"Error: {e}")
+                
     with col_img:
         if st.session_state.current_image:
             st.image(st.session_state.current_image, use_container_width=True)
