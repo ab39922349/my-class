@@ -7,11 +7,25 @@ import os
 import json
 
 # --- Page Config ---
-st.set_page_config(page_title="Classroom Assistant v8.1", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Classroom Assistant v8.2", page_icon="🎓", layout="wide")
 
-# --- CSS Styling ---
+# --- CSS Styling (Hide Streamlit UI) ---
 st.markdown("""
     <style>
+    /* 1. Hide Top Menu (Hamburger) */
+    #MainMenu {visibility: hidden;}
+    
+    /* 2. Hide Footer (Made with Streamlit) */
+    footer {visibility: hidden;}
+    
+    /* 3. Hide Header (The top colored bar) */
+    header {visibility: hidden;}
+    
+    /* 4. Hide 'Manage App' button and toolbar */
+    [data-testid="stToolbar"] {visibility: hidden; display: none;}
+    .stDeployButton {display:none;}
+    
+    /* Custom Styles */
     .big-font { font-size:30px !important; font-weight: bold; color: #2c3e50; }
     .instruction { font-size:20px; color: #555; margin-bottom: 20px;}
     .sentence-box { background-color: #e8f4f8; border-left: 6px solid #3498db; padding: 20px; margin-top: 15px; border-radius: 5px; }
@@ -134,9 +148,8 @@ if st.sidebar.button("⚠️ Factory Reset"):
     time.sleep(0.5)
     st.rerun()
 
-# --- 🕒 JS INJECTION FOR TIMER (Pop-out method) ---
+# --- 🕒 JS INJECTION FOR TIMER ---
 def get_timer_script(end_time, is_running):
-    # If not running, we just want to remove the element if it exists
     if not is_running:
         return """
         <script>
@@ -146,14 +159,11 @@ def get_timer_script(end_time, is_running):
         </script>
         """
     
-    # If running, we inject/update it
     return f"""
     <script>
         (function() {{
             const endTime = {end_time};
             const doc = window.parent.document;
-            
-            // Check if element exists, if not create it
             let timerDiv = doc.getElementById('custom-floating-timer');
             if (!timerDiv) {{
                 timerDiv = doc.createElement('div');
@@ -178,17 +188,11 @@ def get_timer_script(end_time, is_running):
             function updateTimer() {{
                 const now = Date.now() / 1000;
                 const remaining = endTime - now;
-                
-                // Security check: if user stopped timer in python, remove div
-                // (We can't easily check python state here, so we rely on the 'remove' script sent when Stopped)
-
                 if (remaining > 0) {{
                     const m = Math.floor(remaining / 60);
                     const s = Math.floor(remaining % 60);
                     const text = (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
                     timerDiv.innerText = text;
-                    
-                    // Alert mode
                     if (remaining < 10) {{
                         timerDiv.style.background = 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)';
                         timerDiv.style.transform = (Math.floor(remaining * 2) % 2 === 0) ? 'scale(1.1)' : 'scale(1)';
@@ -202,8 +206,6 @@ def get_timer_script(end_time, is_running):
                     timerDiv.style.transform = 'scale(1.2)';
                 }}
             }}
-
-            // Clear any old intervals to prevent stacking
             if (window.myTimerInterval) clearInterval(window.myTimerInterval);
             window.myTimerInterval = setInterval(updateTimer, 500);
             updateTimer();
@@ -211,7 +213,6 @@ def get_timer_script(end_time, is_running):
     </script>
     """
 
-# Inject the JS
 script_html = get_timer_script(st.session_state.timer_end_time, st.session_state.timer_running)
 components.html(script_html, height=0)
 
@@ -493,7 +494,6 @@ with tab_group:
                     group_members = st.session_state.groups[group_idx]
                     
                     with row_cols[j]:
-                        # 🛠️ AUTO-FIX for KeyError
                         if group_idx not in st.session_state.group_scores:
                             st.session_state.group_scores[group_idx] = 0
 
