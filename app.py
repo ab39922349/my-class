@@ -7,7 +7,7 @@ import os
 import json
 
 # --- Page Config ---
-st.set_page_config(page_title="Classroom Assistant v4.5", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Classroom Assistant v5.0", page_icon="🎓", layout="wide")
 
 # --- CSS Styling ---
 st.markdown("""
@@ -20,17 +20,50 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- Initialize Session State ---
-if 'students' not in st.session_state:
-    st.session_state.students = ["Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace", "Henry", "Ivy", "Jack", "Kevin", "Lily", "Mike", "Nina", "Oliver", "Paul", "Queen", "Rick", "Sam", "Tom", "Uma", "Victor", "Wendy", "Zack"]
-if 'scores' not in st.session_state:
-    st.session_state.scores = {name: 0 for name in st.session_state.students}
+# --- 💾 DATA PERSISTENCE FUNCTIONS (Save/Load) ---
+DATA_FILE = "classroom_data.csv"
+
+def save_data(student_list, score_dict):
+    """Saves the current students and scores to a CSV file."""
+    try:
+        # Convert dictionary to DataFrame
+        # Ensure the order matches the student list
+        data = []
+        for name in student_list:
+            data.append({"Name": name, "Score": score_dict.get(name, 0)})
+        
+        df = pd.DataFrame(data)
+        df.to_csv(DATA_FILE, index=False)
+    except Exception as e:
+        st.error(f"Error saving data: {e}")
+
+def load_data():
+    """Loads students and scores from CSV if it exists."""
+    default_students = ["Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace", "Henry", "Ivy", "Jack", "Kevin", "Lily", "Mike", "Nina", "Oliver", "Paul", "Queen", "Rick", "Sam", "Tom", "Uma", "Victor", "Wendy", "Zack"]
+    default_scores = {name: 0 for name in default_students}
+    
+    if os.path.exists(DATA_FILE):
+        try:
+            df = pd.read_csv(DATA_FILE)
+            # Create list and dict from the file
+            loaded_students = df["Name"].tolist()
+            loaded_scores = dict(zip(df["Name"], df["Score"]))
+            return loaded_students, loaded_scores
+        except Exception:
+            return default_students, default_scores
+    else:
+        return default_students, default_scores
+
+# --- Initialize Session State (Load from file first) ---
+if 'students' not in st.session_state or 'scores' not in st.session_state:
+    loaded_students, loaded_scores = load_data()
+    st.session_state.students = loaded_students
+    st.session_state.scores = loaded_scores
+
 if 'current_image' not in st.session_state:
     st.session_state.current_image = None
 if 'current_image_name' not in st.session_state:
     st.session_state.current_image_name = ""
-    
-# ✨ NEW: Track available images for no-repeat logic
 if 'available_images' not in st.session_state:
     st.session_state.available_images = []
 
@@ -38,12 +71,27 @@ if 'available_images' not in st.session_state:
 st.sidebar.header("⚙️ Settings")
 st.sidebar.write("Enter student names below:")
 input_names = st.sidebar.text_area("Student List", value="\n".join(st.session_state.students), height=200)
+
 if st.sidebar.button("Update List"):
+    # 1. Parse new list
     new_list = [name.strip() for name in input_names.split('\n') if name.strip()]
+    
+    # 2. Preserve old scores for existing students
+    new_scores = {}
+    for name in new_list:
+        if name in st.session_state.scores:
+            new_scores[name] = st.session_state.scores[name]
+        else:
+            new_scores[name] = 0 # New student gets 0
+    
+    # 3. Update Session State
     st.session_state.students = new_list
-    temp_scores = st.session_state.scores
-    st.session_state.scores = {name: temp_scores.get(name, 0) for name in new_list}
-    st.success("List updated successfully!")
+    st.session_state.scores = new_scores
+    
+    # 4. Save to Disk immediately
+    save_data(new_list, new_scores)
+    
+    st.success("List updated & Saved!")
 
 st.title("🎓 Classroom Assistant")
 st.markdown("---")
@@ -240,12 +288,11 @@ def get_seating_chart_html(student_list):
 # --- Tabs ---
 tab_pic, tab_seat, tab_group, tab_score, tab_timer = st.tabs(["🖼️ Look & Say", "🪑 Seating Chart", "👥 Groups", "🏆 Scoreboard", "⏱️ Timer"])
 
-# === Tab 0: Look & Say (No-Repeat Logic) ===
+# === Tab 0: Look & Say ===
 with tab_pic:
     st.header("🖼️ Look & Say: What is he/she doing?")
     st.markdown('<div class="instruction">Please use the pattern: <b>"I think he/she is..., because..."</b></div>', unsafe_allow_html=True)
     
-    # --- Sentence Map ---
     sentence_map = {
         "lie": ["I think he/she is lying, because he looks nervous.", "I think he/she is telling a lie, because his nose is growing.", "I think he/she is being dishonest, because he is hiding something."],
         "lying": ["I think he/she is lying, because he looks uncomfortable.", "I think he/she is faking it, because his smile looks fake.", "I think he/she is not telling the truth, because..."],
@@ -257,10 +304,6 @@ with tab_pic:
     
     col_btn, col_img = st.columns([1, 3])
     with col_btn:
-        # 顯示目前牌庫狀況 (Optional)
-        remaining = len(st.session_state.available_images)
-        st.write(f"Images left: **{remaining}**")
-
         if st.button("📸 Pick Random Image", type="primary", use_container_width=True):
             script_dir = os.path.dirname(os.path.abspath(__file__)) 
             folder_path = os.path.join(script_dir, "images")
@@ -270,20 +313,15 @@ with tab_pic:
             else:
                 valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
                 try:
-                    # 1. 取得所有檔案
                     all_files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in valid_extensions]
-                    
                     if not all_files:
                         st.warning("⚠️ The 'images' folder is empty!")
                     else:
-                        # 2. 檢查牌庫是否需要重置 (空的，或是檔案數量跟之前不對)
                         if not st.session_state.available_images:
                             st.session_state.available_images = all_files.copy()
                             random.shuffle(st.session_state.available_images)
                             st.toast("🔄 All images shown! Reshuffling deck...", icon="🔀")
                         
-                        # 3. 從牌庫抽一張 (Pop)
-                        # 為了保險起見，檢查一下 pop 出來的檔案是否還在硬碟上
                         while st.session_state.available_images:
                             selected_img = st.session_state.available_images.pop()
                             full_path = os.path.join(folder_path, selected_img)
@@ -343,25 +381,8 @@ with tab_score:
         pts = st.number_input("Points", -10, 10, 1)
         if st.button("Update Score"):
             st.session_state.scores[sel_stu] += pts
+            
+            # ✨ SAVE DATA IMMEDIATELY
+            save_data(st.session_state.students, st.session_state.scores)
+            
             st.success(f"{sel_stu}'s score updated!")
-    with cd:
-        df = pd.DataFrame(list(st.session_state.scores.items()), columns=['Name', 'Score']).sort_values(by='Score', ascending=False)
-        st.dataframe(df, use_container_width=True, hide_index=True)
-
-# === Tab 4: Timer ===
-with tab_timer:
-    st.header("⏱️ Timer")
-    c1, c2 = st.columns(2)
-    mins = c1.number_input("Minutes", 0, 60, 1)
-    secs = c2.number_input("Seconds", 0, 59, 0)
-    if st.button("Start Timer"):
-        t_ph = st.empty()
-        bar = st.progress(1.0)
-        tot = mins * 60 + secs
-        for i in range(tot, -1, -1):
-            m, s = divmod(i, 60)
-            t_ph.metric("Time Left", f"{m:02d}:{s:02d}")
-            bar.progress(i / tot if tot > 0 else 0)
-            time.sleep(1)
-        st.balloons()
-        st.success("Time's up!")
