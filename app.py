@@ -5,9 +5,10 @@ import time
 import pandas as pd
 import os
 import json
+from datetime import datetime
 
 # --- Page Config ---
-st.set_page_config(page_title="Classroom Assistant v7.3", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Classroom Assistant v8.0", page_icon="🎓", layout="wide")
 
 # --- CSS Styling ---
 st.markdown("""
@@ -34,7 +35,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 💾 DATA PERSISTENCE (Individual Scores Only) ---
+# --- 💾 DATA PERSISTENCE ---
 DATA_FILE = "classroom_data.csv"
 DEFAULT_STUDENTS = [
     "Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace", 
@@ -73,17 +74,36 @@ def load_data():
 if 'students' not in st.session_state or 'scores' not in st.session_state:
     l_students, l_scores = load_data()
     st.session_state.students = l_students
-    st.session_state.scores = l_scores # INDIVIDUAL SCORES
+    st.session_state.scores = l_scores
 
 if 'current_image' not in st.session_state: st.session_state.current_image = None
 if 'current_image_name' not in st.session_state: st.session_state.current_image_name = ""
 if 'available_images' not in st.session_state: st.session_state.available_images = []
-
-# ✨ Group State & Group Scores
 if 'groups' not in st.session_state: st.session_state.groups = []
 if 'group_scores' not in st.session_state: st.session_state.group_scores = {}
 
-# --- Sidebar: Settings ---
+# ✨ TIMER STATE
+if 'timer_end_time' not in st.session_state: st.session_state.timer_end_time = 0
+
+# --- Sidebar: Settings & Timer ---
+st.sidebar.header("⏱️ Floating Timer")
+t_min = st.sidebar.number_input("Minutes", 0, 60, 5)
+t_sec = st.sidebar.number_input("Seconds", 0, 59, 0)
+col_t1, col_t2 = st.sidebar.columns(2)
+
+with col_t1:
+    if st.sidebar.button("▶ Start", type="primary"):
+        duration = (t_min * 60) + t_sec
+        # Set the future timestamp when timer ends
+        st.session_state.timer_end_time = time.time() + duration
+        st.rerun()
+
+with col_t2:
+    if st.sidebar.button("⏹ Stop"):
+        st.session_state.timer_end_time = 0
+        st.rerun()
+
+st.sidebar.divider()
 st.sidebar.header("⚙️ Settings")
 st.sidebar.subheader("Student List")
 input_names = st.sidebar.text_area("Names (one per line)", value="\n".join(st.session_state.students), height=150)
@@ -96,7 +116,7 @@ if st.sidebar.button("Update List"):
         st.session_state.students = new_list
         st.session_state.scores = new_scores
         save_data(new_list, new_scores)
-        st.session_state.groups = [] # Reset groups on list change
+        st.session_state.groups = [] 
         st.session_state.group_scores = {}
         st.success("List updated!")
         time.sleep(0.5)
@@ -109,10 +129,81 @@ if st.sidebar.button("⚠️ Factory Reset"):
     st.session_state.scores = {name: 0 for name in DEFAULT_STUDENTS}
     st.session_state.groups = []
     st.session_state.group_scores = {}
-    st.sidebar.success("Data reset to default!")
+    st.sidebar.success("Data reset!")
     time.sleep(0.5)
     st.rerun()
 
+# --- 🕒 FLOATING TIMER HTML INJECTION ---
+def get_floating_timer_html(end_time):
+    # Pass the absolute timestamp to JS
+    # JS handles the countdown, so it doesn't block Python
+    html = f"""
+    <div id="floating-timer" style="
+        position: fixed; 
+        bottom: 20px; 
+        right: 20px; 
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+        color: white; 
+        padding: 15px 25px; 
+        border-radius: 50px; 
+        font-family: Arial, sans-serif; 
+        font-size: 24px; 
+        font-weight: bold; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+        z-index: 999999; 
+        display: none;
+        transition: transform 0.2s;
+    ">
+        <span id="timer-display">00:00</span>
+    </div>
+
+    <script>
+        const endTime = {end_time};
+        const timerDiv = document.getElementById('floating-timer');
+        const display = document.getElementById('timer-display');
+
+        function updateTimer() {{
+            const now = Date.now() / 1000;
+            const remaining = endTime - now;
+
+            if (remaining > 0) {{
+                timerDiv.style.display = 'block';
+                const m = Math.floor(remaining / 60);
+                const s = Math.floor(remaining % 60);
+                display.innerText = 
+                    (m < 10 ? "0" + m : m) + ":" + 
+                    (s < 10 ? "0" + s : s);
+                
+                // Visual alert when time is low (< 10s)
+                if (remaining < 10) {{
+                    timerDiv.style.background = 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)';
+                    timerDiv.style.transform = (Math.floor(remaining * 2) % 2 === 0) ? 'scale(1.1)' : 'scale(1)';
+                }}
+            }} else {{
+                // Time's up
+                if (remaining > -5) {{ // Show "Time's Up" for 5 seconds then hide
+                    timerDiv.style.display = 'block';
+                    timerDiv.style.background = '#e74c3c';
+                    display.innerText = "TIME'S UP!";
+                }} else {{
+                    timerDiv.style.display = 'none';
+                }}
+            }}
+        }}
+
+        if (endTime > 0) {{
+            setInterval(updateTimer, 500);
+            updateTimer();
+        }}
+    </script>
+    """
+    return html
+
+# Inject Timer if active
+if st.session_state.timer_end_time > time.time():
+    components.html(get_floating_timer_html(st.session_state.timer_end_time), height=0)
+
+# --- MAIN APP CONTENT ---
 st.title("🎓 Classroom Assistant")
 st.markdown("---")
 
@@ -288,7 +379,7 @@ def get_seating_chart_html(student_list):
     return html_code
 
 # --- Tabs ---
-tab_pic, tab_seat, tab_group, tab_score, tab_timer = st.tabs(["🖼️ Look & Say", "🪑 Seating Chart", "⚔️ Group Battle", "🏆 Scoreboard", "⏱️ Timer"])
+tab_pic, tab_seat, tab_group, tab_score = st.tabs(["🖼️ Look & Say", "🪑 Seating Chart", "⚔️ Group Battle", "🏆 Scoreboard"])
 
 # === Tab 0: Look & Say ===
 with tab_pic:
@@ -351,7 +442,7 @@ with tab_seat:
         chart_html = get_seating_chart_html(st.session_state.students)
         components.html(chart_html, height=600)
 
-# === Tab 2: Group Battle (FIXED) ===
+# === Tab 2: Group Battle (DECOUPLED) ===
 with tab_group:
     st.header("⚔️ Group Battle Mode")
     
@@ -395,11 +486,9 @@ with tab_group:
                     group_members = st.session_state.groups[group_idx]
                     
                     with row_cols[j]:
-                        # 🛠️ BUG FIX: Auto-initialize if key missing (Self-healing)
                         if group_idx not in st.session_state.group_scores:
                             st.session_state.group_scores[group_idx] = 0
 
-                        # Get Score
                         g_score = st.session_state.group_scores[group_idx]
                         
                         st.markdown(f"""
@@ -410,7 +499,6 @@ with tab_group:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Add Point
                         if st.button(f"➕ Add Point to G{group_idx + 1}", key=f"btn_g_{group_idx}", use_container_width=True):
                             st.session_state.group_scores[group_idx] += 1
                             st.rerun()
@@ -455,21 +543,3 @@ with tab_score:
                 st.session_state.scores = {n:0 for n in DEFAULT_STUDENTS}
                 save_data(DEFAULT_STUDENTS, st.session_state.scores)
                 st.rerun()
-
-# === Tab 4: Timer ===
-with tab_timer:
-    st.header("⏱️ Timer")
-    c1, c2 = st.columns(2)
-    mins = c1.number_input("Minutes", 0, 60, 1)
-    secs = c2.number_input("Seconds", 0, 59, 0)
-    if st.button("Start Timer"):
-        t_ph = st.empty()
-        bar = st.progress(1.0)
-        tot = mins * 60 + secs
-        for i in range(tot, -1, -1):
-            m, s = divmod(i, 60)
-            t_ph.metric("Time Left", f"{m:02d}:{s:02d}")
-            bar.progress(i / tot if tot > 0 else 0)
-            time.sleep(1)
-        st.balloons()
-        st.success("Time's up!")
