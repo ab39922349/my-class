@@ -7,7 +7,7 @@ import os
 import json
 
 # --- Page Config ---
-st.set_page_config(page_title="Classroom Assistant v6.0", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Classroom Assistant v6.1", page_icon="🎓", layout="wide")
 
 # --- CSS Styling ---
 st.markdown("""
@@ -22,7 +22,16 @@ st.markdown("""
 
 # --- 💾 DATA PERSISTENCE ---
 DATA_FILE = "classroom_data.csv"
-DEFAULT_STUDENTS = ["Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace", "Henry", "Ivy", "Jack", "Kevin", "Lily", "Mike", "Nina", "Oliver", "Paul", "Queen", "Rick", "Sam", "Tom", "Uma", "Victor", "Wendy", "Zack"]
+# Updated default list to 29 students to fit the new layout
+DEFAULT_STUDENTS = [
+    "Alice", "Bob", "Charlie", 
+    "David", "Eve", "Frank", "Grace", 
+    "Henry", "Ivy", "Jack", "Kevin", 
+    "Lily", "Mike", "Nina", "Oliver", "Paul", 
+    "Queen", "Rick", "Sam", "Tom", "Uma", 
+    "Victor", "Wendy", "Xander", "Yara", "Zoe", # New students
+    "Leo", "Mia", "Ben"
+]
 
 def save_data(student_list, score_dict):
     try:
@@ -91,7 +100,11 @@ st.markdown("---")
 
 # --- HTML Generator: Seating Chart with Drag & Drop ---
 def get_seating_chart_html(student_list):
-    col_configs = [3, 4, 4, 5, 5, 3] 
+    # ✨ UPDATED LAYOUT: Added a '5' in the middle
+    # Was: [3, 4, 4, 5, 5, 3]
+    # Now: [3, 4, 4, 5, 5, 5, 3]
+    col_configs = [3, 4, 4, 5, 5, 5, 3] 
+    
     total_seats = sum(col_configs)
     
     # Fill remaining seats with empty strings
@@ -114,31 +127,27 @@ def get_seating_chart_html(student_list):
             
             .blackboard {{ width: 90%; background-color: #2d3436; color: white; margin: 0 auto 10px auto; padding: 10px; border-radius: 5px; font-size: 20px; letter-spacing: 2px; border: 4px solid #b2bec3; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }}
             
-            .classroom {{ display: flex; flex-direction: row; justify-content: center; gap: 15px; padding: 10px; }}
+            .classroom {{ display: flex; flex-direction: row; justify-content: center; gap: 10px; padding: 10px; overflow-x: auto; }}
             .column {{ display: flex; flex-direction: column; gap: 10px; }}
             
             .seat {{ 
-                width: 70px; height: 50px; 
+                width: 65px; height: 45px; /* Slightly smaller seats to fit more columns */
                 background-color: #dfe6e9; 
                 border: 2px solid #b2bec3; 
                 border-radius: 8px; 
                 display: flex; align-items: center; justify-content: center; 
-                font-weight: bold; font-size: 16px; color: #2d3436; 
+                font-weight: bold; font-size: 14px; color: #2d3436; 
                 position: relative; 
-                cursor: grab; /* Shows it's draggable */
+                cursor: grab; 
                 transition: transform 0.2s, box-shadow 0.2s;
             }}
             
             .seat:hover {{ border-color: #74b9ff; }}
             .seat:active {{ cursor: grabbing; }}
-            
             .seat.empty {{ background-color: #f1f2f6; color: #ccc; border: 2px dashed #dcdde1; cursor: default; }}
-            
-            /* Dragging Styles */
             .seat.dragging {{ opacity: 0.4; border: 2px dashed #0984e3; }}
             .seat.over {{ border: 3px solid #00b894; transform: scale(1.05); }}
             
-            /* Active / Winner Styles */
             .seat.active {{ background-color: #e17055 !important; color: white !important; border: 3px solid #d63031 !important; transform: scale(1.1); box-shadow: 0 0 15px rgba(225, 112, 85, 0.8); z-index: 10; }}
             .seat.winner {{ background-color: #00b894 !important; color: white !important; border: 3px solid #00cec9 !important; transform: scale(1.2); animation: pulse 1s infinite; z-index: 10; }}
             
@@ -163,122 +172,78 @@ def get_seating_chart_html(student_list):
         <button id="runBtn" onclick="startRoulette()">🎲 Start Picker</button>
 
         <script>
-            // Data from Python
             const pythonStudents = {students_json};
             const colConfig = {col_config_json};
             
             let allSeats = []; 
             let dragSrcEl = null;
 
-            // --- LOCAL STORAGE LOGIC ---
             function loadSeatOrder() {{
                 const savedOrder = localStorage.getItem('classroom_seats_v6');
-                if (savedOrder) {{
-                    return JSON.parse(savedOrder);
-                }}
-                return pythonStudents; // Default to Python list if no save found
+                if (savedOrder) {{ return JSON.parse(savedOrder); }}
+                return pythonStudents;
             }}
 
             function saveSeatOrder() {{
                 const currentOrder = [];
-                // Collect names from DOM in order
-                document.querySelectorAll('.seat').forEach(seat => {{
-                    currentOrder.push(seat.innerText);
-                }});
+                document.querySelectorAll('.seat').forEach(seat => {{ currentOrder.push(seat.innerText); }});
                 localStorage.setItem('classroom_seats_v6', JSON.stringify(currentOrder));
             }}
 
             function resetToSidebarList() {{
                 localStorage.removeItem('classroom_seats_v6');
-                location.reload(); // Reload iframe to fetch fresh Python data
+                location.reload(); 
             }}
 
-            // --- DRAG & DROP HANDLERS ---
+            // --- DRAG & DROP ---
             function handleDragStart(e) {{
                 this.style.opacity = '0.4';
                 dragSrcEl = this;
                 e.dataTransfer.effectAllowed = 'move';
                 e.dataTransfer.setData('text/html', this.innerText);
             }}
-
-            function handleDragOver(e) {{
-                if (e.preventDefault) {{ e.preventDefault(); }}
-                e.dataTransfer.dropEffect = 'move';
-                return false;
-            }}
-
-            function handleDragEnter(e) {{
-                this.classList.add('over');
-            }}
-
-            function handleDragLeave(e) {{
-                this.classList.remove('over');
-            }}
-
+            function handleDragOver(e) {{ if (e.preventDefault) {{ e.preventDefault(); }} e.dataTransfer.dropEffect = 'move'; return false; }}
+            function handleDragEnter(e) {{ this.classList.add('over'); }}
+            function handleDragLeave(e) {{ this.classList.remove('over'); }}
             function handleDrop(e) {{
                 if (e.stopPropagation) {{ e.stopPropagation(); }}
-                
-                // Don't do anything if dropping on itself
                 if (dragSrcEl !== this) {{
-                    // SWAP NAMES
                     const srcName = dragSrcEl.innerText;
                     const destName = this.innerText;
-                    
                     dragSrcEl.innerText = destName;
                     this.innerText = srcName;
-                    
-                    // Handle Empty Logic (Visuals)
                     checkEmpty(dragSrcEl);
                     checkEmpty(this);
-
-                    // Save new order to browser memory
                     saveSeatOrder();
                 }}
                 return false;
             }}
-
             function handleDragEnd(e) {{
                 this.style.opacity = '1';
-                allSeats.forEach(seat => {{
-                    seat.classList.remove('over');
-                }});
+                allSeats.forEach(seat => {{ seat.classList.remove('over'); }});
             }}
-            
             function checkEmpty(seat) {{
-                if (seat.innerText === "") {{
-                    seat.classList.add('empty');
-                    seat.draggable = false;
-                }} else {{
-                    seat.classList.remove('empty');
-                    seat.draggable = true;
-                }}
+                if (seat.innerText === "") {{ seat.classList.add('empty'); seat.draggable = false; }} 
+                else {{ seat.classList.remove('empty'); seat.draggable = true; }}
             }}
-
             function addDnDHandlers(seat) {{
                 if (seat.innerText !== "") {{
                     seat.draggable = true;
                     seat.addEventListener('dragstart', handleDragStart, false);
-                    seat.addEventListener('dragenter', handleDragEnter, false);
-                    seat.addEventListener('dragover', handleDragOver, false);
-                    seat.addEventListener('dragleave', handleDragLeave, false);
-                    seat.addEventListener('drop', handleDrop, false);
-                    seat.addEventListener('dragend', handleDragEnd, false);
-                }} else {{
-                    // Allow dropping onto empty seats too!
-                    seat.addEventListener('dragenter', handleDragEnter, false);
-                    seat.addEventListener('dragover', handleDragOver, false);
-                    seat.addEventListener('dragleave', handleDragLeave, false);
-                    seat.addEventListener('drop', handleDrop, false);
                 }}
+                seat.addEventListener('dragenter', handleDragEnter, false);
+                seat.addEventListener('dragover', handleDragOver, false);
+                seat.addEventListener('dragleave', handleDragLeave, false);
+                seat.addEventListener('drop', handleDrop, false);
+                seat.addEventListener('dragend', handleDragEnd, false);
             }}
 
-            // --- INITIALIZATION ---
+            // --- INIT ---
             function initClassroom() {{
                 const container = document.getElementById('classroom-container');
-                const studentList = loadSeatOrder(); // Load saved order or default
-                
+                const studentList = loadSeatOrder(); 
                 let studentIndex = 0;
-                allSeats = []; // Reset array
+                allSeats = []; 
 
                 colConfig.forEach((seatsInCol) => {{
                     const colDiv = document.createElement('div');
@@ -286,20 +251,12 @@ def get_seating_chart_html(student_list):
                     for (let i = 0; i < seatsInCol; i++) {{
                         const seatDiv = document.createElement('div');
                         seatDiv.className = 'seat';
-                        
                         const name = studentList[studentIndex] || "";
                         seatDiv.innerText = name;
-                        
                         checkEmpty(seatDiv);
                         addDnDHandlers(seatDiv);
-                        
-                        if (name !== "") {{
-                            seatDiv.id = 'seat-' + studentIndex;
-                        }}
-                        
-                        // Always add to allSeats so we can rebuild order
+                        if (name !== "") {{ seatDiv.id = 'seat-' + studentIndex; }}
                         allSeats.push(seatDiv);
-                        
                         colDiv.appendChild(seatDiv);
                         studentIndex++;
                     }}
@@ -307,9 +264,8 @@ def get_seating_chart_html(student_list):
                 }});
             }}
 
-            // --- ROULETTE LOGIC (UNCHANGED) ---
+            // --- ROULETTE ---
             function startRoulette() {{
-                // Only pick from seats that have names
                 const activeSeats = allSeats.filter(s => s.innerText !== "");
                 if (activeSeats.length === 0) return;
 
@@ -317,7 +273,6 @@ def get_seating_chart_html(student_list):
                 const winDisplay = document.getElementById('winner-display');
                 btn.disabled = true;
                 winDisplay.innerText = "Picking a lucky student...";
-                
                 activeSeats.forEach(s => s.classList.remove('active', 'winner'));
 
                 let steps = 0;
@@ -344,14 +299,12 @@ def get_seating_chart_html(student_list):
                 }}
                 nextStep();
             }}
-
             function finalize(seat) {{
                 seat.classList.remove('active');
                 seat.classList.add('winner');
                 document.getElementById('winner-display').innerText = "🎉 " + seat.innerText + " 🎉";
                 document.getElementById('runBtn').disabled = false;
             }}
-
             initClassroom();
         </script>
     </body>
