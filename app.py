@@ -7,32 +7,47 @@ import os
 import json
 
 # --- Page Config ---
-st.set_page_config(page_title="Classroom Assistant v8.2", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Classroom Assistant v8.3", page_icon="🎓", layout="wide")
 
-# --- CSS Styling (Hide Streamlit UI) ---
+# --- CSS Styling (Advanced Hiding) ---
 st.markdown("""
     <style>
-    /* 1. Hide Top Menu (Hamburger) */
-    #MainMenu {visibility: hidden;}
+    /* 強制隱藏 Streamlit 預設的所有 UI 元素 */
     
-    /* 2. Hide Footer (Made with Streamlit) */
-    footer {visibility: hidden;}
+    /* 1. 隱藏上方彩色條與漢堡選單 */
+    header[data-testid="stHeader"] {
+        display: none !important;
+        visibility: hidden !important;
+    }
     
-    /* 3. Hide Header (The top colored bar) */
-    header {visibility: hidden;}
+    /* 2. 隱藏下方 Footer (Made with Streamlit) */
+    footer[data-testid="stFooter"] {
+        display: none !important;
+        visibility: hidden !important;
+    }
     
-    /* 4. Hide 'Manage App' button and toolbar */
-    [data-testid="stToolbar"] {visibility: hidden; display: none;}
-    .stDeployButton {display:none;}
+    /* 3. 隱藏工具列 (Deploy button etc) */
+    div[data-testid="stToolbar"] {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    .stDeployButton {
+        display: none !important;
+    }
     
-    /* Custom Styles */
+    /* 4. 調整頂部留白，讓內容往上移，利用全螢幕空間 */
+    .main .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 1rem !important;
+    }
+    
+    /* --- Custom App Styles --- */
     .big-font { font-size:30px !important; font-weight: bold; color: #2c3e50; }
     .instruction { font-size:20px; color: #555; margin-bottom: 20px;}
     .sentence-box { background-color: #e8f4f8; border-left: 6px solid #3498db; padding: 20px; margin-top: 15px; border-radius: 5px; }
     .sentence-title { color: #2980b9; font-weight: bold; font-size: 18px; margin-bottom: 10px; }
     .sentence-item { font-size: 22px; color: #2c3e50; margin-bottom: 8px; font-family: sans-serif; }
     
-    /* Group Card Styling */
     .group-card {
         background-color: #fff;
         padding: 15px;
@@ -95,7 +110,6 @@ if 'available_images' not in st.session_state: st.session_state.available_images
 if 'groups' not in st.session_state: st.session_state.groups = []
 if 'group_scores' not in st.session_state: st.session_state.group_scores = {}
 
-# ✨ TIMER STATE
 if 'timer_end_time' not in st.session_state: st.session_state.timer_end_time = 0
 if 'timer_running' not in st.session_state: st.session_state.timer_running = False
 
@@ -158,7 +172,6 @@ def get_timer_script(end_time, is_running):
             if (existing) { existing.remove(); }
         </script>
         """
-    
     return f"""
     <script>
         (function() {{
@@ -184,7 +197,6 @@ def get_timer_script(end_time, is_running):
                 timerDiv.innerHTML = '00:00';
                 doc.body.appendChild(timerDiv);
             }}
-
             function updateTimer() {{
                 const now = Date.now() / 1000;
                 const remaining = endTime - now;
@@ -494,6 +506,7 @@ with tab_group:
                     group_members = st.session_state.groups[group_idx]
                     
                     with row_cols[j]:
+                        # 🛠️ AUTO-FIX for KeyError
                         if group_idx not in st.session_state.group_scores:
                             st.session_state.group_scores[group_idx] = 0
 
