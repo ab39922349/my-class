@@ -7,7 +7,7 @@ import os
 import json
 
 # --- Page Config ---
-st.set_page_config(page_title="Classroom Assistant v5.1", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Classroom Assistant v6.0", page_icon="🎓", layout="wide")
 
 # --- CSS Styling ---
 st.markdown("""
@@ -20,12 +20,11 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 💾 DATA PERSISTENCE (Save/Load) ---
+# --- 💾 DATA PERSISTENCE ---
 DATA_FILE = "classroom_data.csv"
 DEFAULT_STUDENTS = ["Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace", "Henry", "Ivy", "Jack", "Kevin", "Lily", "Mike", "Nina", "Oliver", "Paul", "Queen", "Rick", "Sam", "Tom", "Uma", "Victor", "Wendy", "Zack"]
 
 def save_data(student_list, score_dict):
-    """Saves to CSV."""
     try:
         data = []
         for name in student_list:
@@ -36,64 +35,41 @@ def save_data(student_list, score_dict):
         st.error(f"Error saving data: {e}")
 
 def load_data():
-    """Loads from CSV."""
     default_scores = {name: 0 for name in DEFAULT_STUDENTS}
-    
     if os.path.exists(DATA_FILE):
         try:
             df = pd.read_csv(DATA_FILE)
-            if df.empty:
-                return DEFAULT_STUDENTS, default_scores
+            if df.empty: return DEFAULT_STUDENTS, default_scores
+            if "Name" not in df.columns or "Score" not in df.columns: return DEFAULT_STUDENTS, default_scores
             
-            # Ensure columns exist
-            if "Name" not in df.columns or "Score" not in df.columns:
-                return DEFAULT_STUDENTS, default_scores
-
             loaded_students = df["Name"].astype(str).tolist()
             loaded_scores = dict(zip(df["Name"].astype(str), df["Score"].astype(int)))
-            
-            # Fill missing scores if any
             for name in loaded_students:
-                if name not in loaded_scores:
-                    loaded_scores[name] = 0
-                    
+                if name not in loaded_scores: loaded_scores[name] = 0
             return loaded_students, loaded_scores
-        except Exception as e:
-            # st.error(f"Load Error: {e}") # Debug
-            return DEFAULT_STUDENTS, default_scores
-    else:
-        return DEFAULT_STUDENTS, default_scores
+        except: return DEFAULT_STUDENTS, default_scores
+    else: return DEFAULT_STUDENTS, default_scores
 
 # --- Initialize Session State ---
-# 1. Load data into session state
 if 'students' not in st.session_state or 'scores' not in st.session_state:
     l_students, l_scores = load_data()
     st.session_state.students = l_students
     st.session_state.scores = l_scores
 
-# 2. Init other states
-if 'current_image' not in st.session_state:
-    st.session_state.current_image = None
-if 'current_image_name' not in st.session_state:
-    st.session_state.current_image_name = ""
-if 'available_images' not in st.session_state:
-    st.session_state.available_images = []
+if 'current_image' not in st.session_state: st.session_state.current_image = None
+if 'current_image_name' not in st.session_state: st.session_state.current_image_name = ""
+if 'available_images' not in st.session_state: st.session_state.available_images = []
 
 # --- Sidebar: Settings ---
 st.sidebar.header("⚙️ Settings")
-
-# 1. Student List Input
 st.sidebar.subheader("Student List")
 input_names = st.sidebar.text_area("Names (one per line)", value="\n".join(st.session_state.students), height=150)
 if st.sidebar.button("Update List"):
     new_list = [name.strip() for name in input_names.split('\n') if name.strip()]
-    if not new_list:
-        st.sidebar.error("List cannot be empty!")
+    if not new_list: st.sidebar.error("List cannot be empty!")
     else:
         new_scores = {}
-        for name in new_list:
-            new_scores[name] = st.session_state.scores.get(name, 0)
-        
+        for name in new_list: new_scores[name] = st.session_state.scores.get(name, 0)
         st.session_state.students = new_list
         st.session_state.scores = new_scores
         save_data(new_list, new_scores)
@@ -101,25 +77,27 @@ if st.sidebar.button("Update List"):
         time.sleep(0.5)
         st.rerun()
 
-# 2. Reset Button (Emergency Fix)
 st.sidebar.markdown("---")
 if st.sidebar.button("⚠️ Reset All Data"):
-    if os.path.exists(DATA_FILE):
-        os.remove(DATA_FILE)
+    if os.path.exists(DATA_FILE): os.remove(DATA_FILE)
     st.session_state.students = DEFAULT_STUDENTS
     st.session_state.scores = {name: 0 for name in DEFAULT_STUDENTS}
-    st.sidebar.success("Data reset to default!")
+    st.sidebar.success("Data reset!")
     time.sleep(0.5)
     st.rerun()
 
 st.title("🎓 Classroom Assistant")
 st.markdown("---")
 
-# --- HTML Generators ---
+# --- HTML Generator: Seating Chart with Drag & Drop ---
 def get_seating_chart_html(student_list):
     col_configs = [3, 4, 4, 5, 5, 3] 
     total_seats = sum(col_configs)
+    
+    # Fill remaining seats with empty strings
     padded_students = student_list[:total_seats] + [""] * (total_seats - len(student_list))
+    
+    # JSON for JS
     students_json = json.dumps(padded_students)
     col_config_json = json.dumps(col_configs)
     
@@ -128,15 +106,44 @@ def get_seating_chart_html(student_list):
     <html>
     <head>
         <style>
-            body {{ font-family: 'Arial', sans-serif; text-align: center; margin: 0; background-color: transparent;}}
-            .blackboard {{ width: 90%; background-color: #2d3436; color: white; margin: 0 auto 20px auto; padding: 10px; border-radius: 5px; font-size: 20px; letter-spacing: 2px; border: 4px solid #b2bec3; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }}
+            body {{ font-family: 'Arial', sans-serif; text-align: center; margin: 0; background-color: transparent; user-select: none; }}
+            
+            .controls {{ margin-bottom: 10px; display: flex; justify-content: center; gap: 10px; align-items: center;}}
+            .hint {{ color: #666; font-size: 14px; font-style: italic; }}
+            .reset-link {{ color: #0984e3; cursor: pointer; text-decoration: underline; font-size: 14px; border: none; background: none; }}
+            
+            .blackboard {{ width: 90%; background-color: #2d3436; color: white; margin: 0 auto 10px auto; padding: 10px; border-radius: 5px; font-size: 20px; letter-spacing: 2px; border: 4px solid #b2bec3; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }}
+            
             .classroom {{ display: flex; flex-direction: row; justify-content: center; gap: 15px; padding: 10px; }}
             .column {{ display: flex; flex-direction: column; gap: 10px; }}
-            .seat {{ width: 70px; height: 50px; background-color: #dfe6e9; border: 2px solid #b2bec3; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; color: #2d3436; transition: all 0.1s; position: relative; }}
-            .seat.empty {{ background-color: #f1f2f6; color: #ccc; border: 2px dashed #dcdde1; }}
+            
+            .seat {{ 
+                width: 70px; height: 50px; 
+                background-color: #dfe6e9; 
+                border: 2px solid #b2bec3; 
+                border-radius: 8px; 
+                display: flex; align-items: center; justify-content: center; 
+                font-weight: bold; font-size: 16px; color: #2d3436; 
+                position: relative; 
+                cursor: grab; /* Shows it's draggable */
+                transition: transform 0.2s, box-shadow 0.2s;
+            }}
+            
+            .seat:hover {{ border-color: #74b9ff; }}
+            .seat:active {{ cursor: grabbing; }}
+            
+            .seat.empty {{ background-color: #f1f2f6; color: #ccc; border: 2px dashed #dcdde1; cursor: default; }}
+            
+            /* Dragging Styles */
+            .seat.dragging {{ opacity: 0.4; border: 2px dashed #0984e3; }}
+            .seat.over {{ border: 3px solid #00b894; transform: scale(1.05); }}
+            
+            /* Active / Winner Styles */
             .seat.active {{ background-color: #e17055 !important; color: white !important; border: 3px solid #d63031 !important; transform: scale(1.1); box-shadow: 0 0 15px rgba(225, 112, 85, 0.8); z-index: 10; }}
             .seat.winner {{ background-color: #00b894 !important; color: white !important; border: 3px solid #00cec9 !important; transform: scale(1.2); animation: pulse 1s infinite; z-index: 10; }}
+            
             @keyframes pulse {{ 0% {{ box-shadow: 0 0 0 0 rgba(0, 184, 148, 0.7); }} 70% {{ box-shadow: 0 0 0 10px rgba(0, 184, 148, 0); }} 100% {{ box-shadow: 0 0 0 0 rgba(0, 184, 148, 0); }} }}
+            
             #runBtn {{ margin-top: 20px; padding: 10px 30px; font-size: 20px; background-color: #0984e3; color: white; border: none; border-radius: 5px; cursor: pointer; }}
             #runBtn:hover {{ background-color: #74b9ff; }}
             #runBtn:disabled {{ background-color: #ccc; cursor: not-allowed; }}
@@ -145,49 +152,186 @@ def get_seating_chart_html(student_list):
     </head>
     <body>
         <div class="blackboard">BLACKBOARD</div>
+        
+        <div class="controls">
+            <span class="hint">💡 Drag and drop to swap seats!</span>
+            <button class="reset-link" onclick="resetToSidebarList()">🔄 Reset to Sidebar List</button>
+        </div>
+
         <div class="classroom" id="classroom-container"></div>
         <div id="winner-display"></div>
         <button id="runBtn" onclick="startRoulette()">🎲 Start Picker</button>
+
         <script>
-            const students = {students_json};
+            // Data from Python
+            const pythonStudents = {students_json};
             const colConfig = {col_config_json};
+            
             let allSeats = []; 
+            let dragSrcEl = null;
+
+            // --- LOCAL STORAGE LOGIC ---
+            function loadSeatOrder() {{
+                const savedOrder = localStorage.getItem('classroom_seats_v6');
+                if (savedOrder) {{
+                    return JSON.parse(savedOrder);
+                }}
+                return pythonStudents; // Default to Python list if no save found
+            }}
+
+            function saveSeatOrder() {{
+                const currentOrder = [];
+                // Collect names from DOM in order
+                document.querySelectorAll('.seat').forEach(seat => {{
+                    currentOrder.push(seat.innerText);
+                }});
+                localStorage.setItem('classroom_seats_v6', JSON.stringify(currentOrder));
+            }}
+
+            function resetToSidebarList() {{
+                localStorage.removeItem('classroom_seats_v6');
+                location.reload(); // Reload iframe to fetch fresh Python data
+            }}
+
+            // --- DRAG & DROP HANDLERS ---
+            function handleDragStart(e) {{
+                this.style.opacity = '0.4';
+                dragSrcEl = this;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', this.innerText);
+            }}
+
+            function handleDragOver(e) {{
+                if (e.preventDefault) {{ e.preventDefault(); }}
+                e.dataTransfer.dropEffect = 'move';
+                return false;
+            }}
+
+            function handleDragEnter(e) {{
+                this.classList.add('over');
+            }}
+
+            function handleDragLeave(e) {{
+                this.classList.remove('over');
+            }}
+
+            function handleDrop(e) {{
+                if (e.stopPropagation) {{ e.stopPropagation(); }}
+                
+                // Don't do anything if dropping on itself
+                if (dragSrcEl !== this) {{
+                    // SWAP NAMES
+                    const srcName = dragSrcEl.innerText;
+                    const destName = this.innerText;
+                    
+                    dragSrcEl.innerText = destName;
+                    this.innerText = srcName;
+                    
+                    // Handle Empty Logic (Visuals)
+                    checkEmpty(dragSrcEl);
+                    checkEmpty(this);
+
+                    // Save new order to browser memory
+                    saveSeatOrder();
+                }}
+                return false;
+            }}
+
+            function handleDragEnd(e) {{
+                this.style.opacity = '1';
+                allSeats.forEach(seat => {{
+                    seat.classList.remove('over');
+                }});
+            }}
+            
+            function checkEmpty(seat) {{
+                if (seat.innerText === "") {{
+                    seat.classList.add('empty');
+                    seat.draggable = false;
+                }} else {{
+                    seat.classList.remove('empty');
+                    seat.draggable = true;
+                }}
+            }}
+
+            function addDnDHandlers(seat) {{
+                if (seat.innerText !== "") {{
+                    seat.draggable = true;
+                    seat.addEventListener('dragstart', handleDragStart, false);
+                    seat.addEventListener('dragenter', handleDragEnter, false);
+                    seat.addEventListener('dragover', handleDragOver, false);
+                    seat.addEventListener('dragleave', handleDragLeave, false);
+                    seat.addEventListener('drop', handleDrop, false);
+                    seat.addEventListener('dragend', handleDragEnd, false);
+                }} else {{
+                    // Allow dropping onto empty seats too!
+                    seat.addEventListener('dragenter', handleDragEnter, false);
+                    seat.addEventListener('dragover', handleDragOver, false);
+                    seat.addEventListener('dragleave', handleDragLeave, false);
+                    seat.addEventListener('drop', handleDrop, false);
+                }}
+            }}
+
+            // --- INITIALIZATION ---
             function initClassroom() {{
                 const container = document.getElementById('classroom-container');
+                const studentList = loadSeatOrder(); // Load saved order or default
+                
                 let studentIndex = 0;
-                colConfig.forEach((seatsInCol, colIndex) => {{
+                allSeats = []; // Reset array
+
+                colConfig.forEach((seatsInCol) => {{
                     const colDiv = document.createElement('div');
                     colDiv.className = 'column';
                     for (let i = 0; i < seatsInCol; i++) {{
                         const seatDiv = document.createElement('div');
                         seatDiv.className = 'seat';
-                        const name = students[studentIndex] || "";
+                        
+                        const name = studentList[studentIndex] || "";
                         seatDiv.innerText = name;
-                        if (name === "") {{ seatDiv.classList.add('empty'); }} 
-                        else {{ seatDiv.id = 'seat-' + studentIndex; allSeats.push(seatDiv); }}
+                        
+                        checkEmpty(seatDiv);
+                        addDnDHandlers(seatDiv);
+                        
+                        if (name !== "") {{
+                            seatDiv.id = 'seat-' + studentIndex;
+                        }}
+                        
+                        // Always add to allSeats so we can rebuild order
+                        allSeats.push(seatDiv);
+                        
                         colDiv.appendChild(seatDiv);
                         studentIndex++;
                     }}
                     container.appendChild(colDiv);
                 }});
             }}
+
+            // --- ROULETTE LOGIC (UNCHANGED) ---
             function startRoulette() {{
-                if (allSeats.length === 0) return;
+                // Only pick from seats that have names
+                const activeSeats = allSeats.filter(s => s.innerText !== "");
+                if (activeSeats.length === 0) return;
+
                 const btn = document.getElementById('runBtn');
                 const winDisplay = document.getElementById('winner-display');
                 btn.disabled = true;
                 winDisplay.innerText = "Picking a lucky student...";
-                allSeats.forEach(s => s.classList.remove('active', 'winner'));
+                
+                activeSeats.forEach(s => s.classList.remove('active', 'winner'));
+
                 let steps = 0;
                 const totalSteps = 30 + Math.floor(Math.random() * 10); 
                 let currentSpeed = 50; 
-                let currentIndex = Math.floor(Math.random() * allSeats.length);
+                let currentIndex = Math.floor(Math.random() * activeSeats.length);
+
                 function nextStep() {{
-                    allSeats.forEach(s => s.classList.remove('active'));
-                    currentIndex = (currentIndex + 1) % allSeats.length;
-                    const currentSeat = allSeats[currentIndex];
+                    activeSeats.forEach(s => s.classList.remove('active'));
+                    currentIndex = (currentIndex + 1) % activeSeats.length;
+                    const currentSeat = activeSeats[currentIndex];
                     currentSeat.classList.add('active');
                     steps++;
+
                     if (steps < totalSteps) {{
                         const remaining = totalSteps - steps;
                         if (remaining < 15) {{
@@ -200,13 +344,14 @@ def get_seating_chart_html(student_list):
                 }}
                 nextStep();
             }}
+
             function finalize(seat) {{
                 seat.classList.remove('active');
                 seat.classList.add('winner');
-                const name = seat.innerText;
-                document.getElementById('winner-display').innerText = "🎉 " + name + " 🎉";
+                document.getElementById('winner-display').innerText = "🎉 " + seat.innerText + " 🎉";
                 document.getElementById('runBtn').disabled = false;
             }}
+
             initClassroom();
         </script>
     </body>
@@ -271,7 +416,7 @@ with tab_pic:
         else:
             st.info("👈 Please click the button to start.")
 
-# === Tab NEW: Seating Chart ===
+# === Tab NEW: Seating Chart with Drag & Drop ===
 with tab_seat:
     st.header("🪑 Seating Chart Picker")
     if not st.session_state.students:
@@ -294,13 +439,11 @@ with tab_group:
                 st.markdown(f"**Group {i+1}**")
                 st.success(", ".join(group))
 
-# === Tab 3: Scoreboard (Fixed) ===
+# === Tab 3: Scoreboard ===
 with tab_score:
     st.header("🏆 Scoreboard")
     cd, ca = st.columns([2, 1])
-    
     with ca:
-        # Use session state list to ensure it's loaded
         current_students = st.session_state.students
         if current_students:
             sel_stu = st.selectbox("Select Student", current_students)
@@ -310,24 +453,15 @@ with tab_score:
                 save_data(st.session_state.students, st.session_state.scores)
                 st.success(f"{sel_stu}'s score updated!")
                 time.sleep(0.5)
-                st.rerun() # Force refresh to show new score immediately
-        else:
-            st.warning("No students available.")
-
+                st.rerun()
+        else: st.warning("No students available.")
     with cd:
-        # Create DataFrame directly from current session state
-        score_data = []
-        for name in st.session_state.students:
-            score_data.append({
-                "Name": name, 
-                "Score": st.session_state.scores.get(name, 0)
-            })
-        
+        score_data = [{"Name": n, "Score": st.session_state.scores.get(n, 0)} for n in st.session_state.students]
         if score_data:
             df = pd.DataFrame(score_data).sort_values(by='Score', ascending=False)
             st.dataframe(df, use_container_width=True, hide_index=True)
         else:
-            st.info("Scoreboard is empty. Please check the student list.")
+            st.info("Scoreboard is empty.")
             if st.button("Try Loading Default Data"):
                 st.session_state.students = DEFAULT_STUDENTS
                 st.session_state.scores = {n:0 for n in DEFAULT_STUDENTS}
