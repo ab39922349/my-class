@@ -7,7 +7,7 @@ import os
 import json
 
 # --- Page Config ---
-st.set_page_config(page_title="Classroom Assistant v4.1", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Classroom Assistant v4.2", page_icon="🎓", layout="wide")
 
 # --- CSS Styling ---
 st.markdown("""
@@ -26,7 +26,6 @@ st.markdown("""
 
 # --- Initialize Session State ---
 if 'students' not in st.session_state:
-    # Default list with English names or transliterations
     st.session_state.students = ["Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace", "Henry", "Ivy", "Jack", "Kevin", "Lily", "Mike", "Nina", "Oliver", "Paul", "Queen", "Rick", "Sam", "Tom", "Uma", "Victor", "Wendy", "Zack"]
 if 'scores' not in st.session_state:
     st.session_state.scores = {name: 0 for name in st.session_state.students}
@@ -161,7 +160,7 @@ def get_wheel_html(names_list):
     """
     return html_code
 
-# --- 2. Seating Chart HTML Generator ---
+# --- 2. Seating Chart HTML Generator (Updated) ---
 def get_seating_chart_html(student_list):
     col_configs = [3, 4, 4, 5, 5, 3] 
     total_seats = sum(col_configs)
@@ -308,7 +307,8 @@ def get_seating_chart_html(student_list):
                 allSeats.forEach(s => s.classList.remove('active', 'winner'));
 
                 let steps = 0;
-                const totalSteps = 20 + Math.floor(Math.random() * 10); 
+                // Increased base steps to make it run longer (30-40 steps)
+                const totalSteps = 30 + Math.floor(Math.random() * 10); 
                 let currentSpeed = 50; 
                 let currentIndex = Math.floor(Math.random() * allSeats.length);
 
@@ -318,8 +318,22 @@ def get_seating_chart_html(student_list):
                     const currentSeat = allSeats[currentIndex];
                     currentSeat.classList.add('active');
                     steps++;
+
                     if (steps < totalSteps) {{
-                        if (steps > totalSteps - 8) {{ currentSpeed += 40; }}
+                        const remaining = totalSteps - steps;
+                        
+                        // New Deceleration Logic for extra suspense
+                        if (remaining < 15) {{
+                            // Start slowing down noticeably in the last 15 steps
+                            if (remaining < 5) {{
+                                // The "Crawl" Phase: Super slow for the last few steps
+                                currentSpeed += 150; 
+                            }} else {{
+                                // The "Slow" Phase
+                                currentSpeed += 40; 
+                            }}
+                        }}
+                        
                         setTimeout(nextStep, currentSpeed);
                     }} else {{
                         finalize(currentSeat);
