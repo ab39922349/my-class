@@ -7,7 +7,7 @@ import os
 import json
 
 # --- Page Config ---
-st.set_page_config(page_title="Classroom Assistant v7.2", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Classroom Assistant v7.3", page_icon="🎓", layout="wide")
 
 # --- CSS Styling ---
 st.markdown("""
@@ -79,7 +79,7 @@ if 'current_image' not in st.session_state: st.session_state.current_image = Non
 if 'current_image_name' not in st.session_state: st.session_state.current_image_name = ""
 if 'available_images' not in st.session_state: st.session_state.available_images = []
 
-# ✨ NEW: Group State & Group Scores (Separate!)
+# ✨ Group State & Group Scores
 if 'groups' not in st.session_state: st.session_state.groups = []
 if 'group_scores' not in st.session_state: st.session_state.group_scores = {}
 
@@ -351,7 +351,7 @@ with tab_seat:
         chart_html = get_seating_chart_html(st.session_state.students)
         components.html(chart_html, height=600)
 
-# === Tab 2: Group Battle (DECOUPLED) ===
+# === Tab 2: Group Battle (FIXED) ===
 with tab_group:
     st.header("⚔️ Group Battle Mode")
     
@@ -374,7 +374,6 @@ with tab_group:
     with c_info:
         if st.session_state.groups:
             if st.button("🗑️ Reset Group Scores"):
-                # Only reset group_scores, not individual scores
                 st.session_state.group_scores = {i: 0 for i in range(len(st.session_state.groups))}
                 st.toast("Group scores cleared!")
                 time.sleep(0.5)
@@ -396,8 +395,12 @@ with tab_group:
                     group_members = st.session_state.groups[group_idx]
                     
                     with row_cols[j]:
-                        # Get Decoupled Score from group_scores dict
-                        g_score = st.session_state.group_scores.get(group_idx, 0)
+                        # 🛠️ BUG FIX: Auto-initialize if key missing (Self-healing)
+                        if group_idx not in st.session_state.group_scores:
+                            st.session_state.group_scores[group_idx] = 0
+
+                        # Get Score
+                        g_score = st.session_state.group_scores[group_idx]
                         
                         st.markdown(f"""
                         <div class="group-card">
@@ -407,7 +410,7 @@ with tab_group:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Add Point (Only modifies group_scores)
+                        # Add Point
                         if st.button(f"➕ Add Point to G{group_idx + 1}", key=f"btn_g_{group_idx}", use_container_width=True):
                             st.session_state.group_scores[group_idx] += 1
                             st.rerun()
