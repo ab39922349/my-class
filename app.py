@@ -418,7 +418,7 @@ with tab_pic:
         # ✨ NEW "LOVE" CATEGORY
         "love": [
             "I think he/she is in love, because he/she is __________.",
-            "I think he/she falls in love with him/her, because he/she is __________.",
+            "I think he/she doesn't fall in love with him/her, because he/she is __________.",
             
         ],
         
