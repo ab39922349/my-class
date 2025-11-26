@@ -9,10 +9,10 @@ import json
 # --- Page Config ---
 st.set_page_config(page_title="Bodies Speak Louder than Language", page_icon="🎓", layout="wide")
 
-# --- CSS Styling (Clean Interface) ---
+# --- CSS Styling (Advanced Hiding) ---
 st.markdown("""
     <style>
-    /* Hide Streamlit UI */
+    /* Hide Streamlit UI elements */
     header[data-testid="stHeader"] {display: none !important; visibility: hidden !important;}
     footer[data-testid="stFooter"] {display: none !important; visibility: hidden !important;}
     div[data-testid="stToolbar"] {display: none !important; visibility: hidden !important;}
@@ -23,11 +23,11 @@ st.markdown("""
         padding-bottom: 1rem !important;
     }
     
-    /* App Styles */
+    /* Custom App Styles */
     .big-font { font-size:30px !important; font-weight: bold; color: #2c3e50; }
     .instruction { font-size:20px; color: #555; margin-bottom: 20px;}
     
-    /* Sentence Box - Blue Theme */
+    /* Sentence Box Styling */
     .sentence-box { 
         background-color: #e8f4f8; 
         border-left: 6px solid #3498db; 
@@ -399,22 +399,28 @@ def get_seating_chart_html(student_list):
 # --- Tabs ---
 tab_pic, tab_seat, tab_group, tab_score = st.tabs(["🖼️ Look & Say", "🪑 Seating Chart", "⚔️ Group Battle", "🏆 Scoreboard"])
 
-# === Tab 0: Look & Say (WITH CLOZE) ===
+# === Tab 0: Look & Say (WITH UPDATED SENTENCES) ===
 with tab_pic:
     st.header("🖼️ Look & Say: What is he/she doing?")
     st.markdown('<div class="instruction">Please use the pattern: <b>"I think he/she is..., because..."</b></div>', unsafe_allow_html=True)
     
-    # ✨ MAPPING KEYWORDS TO SENTENCES (ALL CLOZE)
+    # ✨ UPDATED SENTENCE MAP
     sentence_map = {
         "lie": [
-            "I think he/she is lying, because he/she looks __________.",
-            "I think he/she is telling a lie, because __________.",
-            "I think he/she is being dishonest, because __________."
+            "I think he/she is lying, because __________.",
+            "I think he/she is not lying, because __________.",
+            "I think he/she is telling a lie, because his/her face looks __________."
         ],
         "lying": [
-            "I think he/she is lying, because he/she looks __________.",
-            "I think he/she is faking it, because his/her smile looks __________.",
-            "I think he/she is not telling the truth, because __________."
+            "I think he/she is lying, because __________.",
+            "I think he/she is not lying, because __________.",
+            "I think he/she is telling a lie, because his/her face looks __________."
+        ],
+        # ✨ NEW "LOVE" CATEGORY
+        "love": [
+            "I think they are in love, because __________.",
+            "I think he/she falls in love with him/her, because he/she is __________.",
+            "I think they really like each other, because __________."
         ],
         "run": [
             "I think he/she is running, because he/she is late for __________.",
