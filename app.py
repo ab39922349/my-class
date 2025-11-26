@@ -7,47 +7,49 @@ import os
 import json
 
 # --- Page Config ---
-st.set_page_config(page_title="Classroom Assistant v8.3", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Bodies Speak Louder than Language", page_icon="🎓", layout="wide")
 
-# --- CSS Styling (Advanced Hiding) ---
+# --- CSS Styling (Clean Interface) ---
 st.markdown("""
     <style>
-    /* 強制隱藏 Streamlit 預設的所有 UI 元素 */
+    /* Hide Streamlit UI */
+    header[data-testid="stHeader"] {display: none !important; visibility: hidden !important;}
+    footer[data-testid="stFooter"] {display: none !important; visibility: hidden !important;}
+    div[data-testid="stToolbar"] {display: none !important; visibility: hidden !important;}
+    .stDeployButton {display: none !important;}
     
-    /* 1. 隱藏上方彩色條與漢堡選單 */
-    header[data-testid="stHeader"] {
-        display: none !important;
-        visibility: hidden !important;
-    }
-    
-    /* 2. 隱藏下方 Footer (Made with Streamlit) */
-    footer[data-testid="stFooter"] {
-        display: none !important;
-        visibility: hidden !important;
-    }
-    
-    /* 3. 隱藏工具列 (Deploy button etc) */
-    div[data-testid="stToolbar"] {
-        display: none !important;
-        visibility: hidden !important;
-    }
-    .stDeployButton {
-        display: none !important;
-    }
-    
-    /* 4. 調整頂部留白，讓內容往上移，利用全螢幕空間 */
     .main .block-container {
         padding-top: 2rem !important;
         padding-bottom: 1rem !important;
     }
     
-    /* --- Custom App Styles --- */
+    /* App Styles */
     .big-font { font-size:30px !important; font-weight: bold; color: #2c3e50; }
     .instruction { font-size:20px; color: #555; margin-bottom: 20px;}
-    .sentence-box { background-color: #e8f4f8; border-left: 6px solid #3498db; padding: 20px; margin-top: 15px; border-radius: 5px; }
-    .sentence-title { color: #2980b9; font-weight: bold; font-size: 18px; margin-bottom: 10px; }
-    .sentence-item { font-size: 22px; color: #2c3e50; margin-bottom: 8px; font-family: sans-serif; }
     
+    /* Sentence Box - Blue Theme */
+    .sentence-box { 
+        background-color: #e8f4f8; 
+        border-left: 6px solid #3498db; 
+        padding: 20px; 
+        margin-top: 15px; 
+        border-radius: 5px; 
+    }
+    .sentence-title { 
+        color: #2980b9; 
+        font-weight: bold; 
+        font-size: 20px; 
+        margin-bottom: 15px; 
+    }
+    .sentence-item { 
+        font-size: 24px; /* Larger text for projector */
+        color: #2c3e50; 
+        margin-bottom: 15px; 
+        font-family: sans-serif; 
+        line-height: 1.6;
+    }
+    
+    /* Group Card Styling */
     .group-card {
         background-color: #fff;
         padding: 15px;
@@ -165,13 +167,7 @@ if st.sidebar.button("⚠️ Factory Reset"):
 # --- 🕒 JS INJECTION FOR TIMER ---
 def get_timer_script(end_time, is_running):
     if not is_running:
-        return """
-        <script>
-            const doc = window.parent.document;
-            const existing = doc.getElementById('custom-floating-timer');
-            if (existing) { existing.remove(); }
-        </script>
-        """
+        return """<script>const d=window.parent.document;const e=d.getElementById('custom-floating-timer');if(e){e.remove();}</script>"""
     return f"""
     <script>
         (function() {{
@@ -224,22 +220,20 @@ def get_timer_script(end_time, is_running):
         }})();
     </script>
     """
-
 script_html = get_timer_script(st.session_state.timer_end_time, st.session_state.timer_running)
 components.html(script_html, height=0)
 
 # --- MAIN APP CONTENT ---
-st.title("🎓 Classroom Assistant")
+st.title("🎓 Bodies Speak Louder than Language")
 st.markdown("---")
 
-# --- HTML Generator: Seating Chart with Drag & Drop ---
+# --- HTML Generator: Seating Chart ---
 def get_seating_chart_html(student_list):
     col_configs = [3, 4, 4, 5, 5, 5, 3] 
     total_seats = sum(col_configs)
     padded_students = student_list[:total_seats] + [""] * (total_seats - len(student_list))
     students_json = json.dumps(padded_students)
     col_config_json = json.dumps(col_configs)
-    
     html_code = f"""
     <!DOCTYPE html>
     <html>
@@ -281,7 +275,6 @@ def get_seating_chart_html(student_list):
             const colConfig = {col_config_json};
             let allSeats = []; 
             let dragSrcEl = null;
-
             function loadSeatOrder() {{
                 const savedOrder = localStorage.getItem('classroom_seats_v6');
                 if (savedOrder) {{ return JSON.parse(savedOrder); }}
@@ -406,18 +399,46 @@ def get_seating_chart_html(student_list):
 # --- Tabs ---
 tab_pic, tab_seat, tab_group, tab_score = st.tabs(["🖼️ Look & Say", "🪑 Seating Chart", "⚔️ Group Battle", "🏆 Scoreboard"])
 
-# === Tab 0: Look & Say ===
+# === Tab 0: Look & Say (WITH CLOZE) ===
 with tab_pic:
     st.header("🖼️ Look & Say: What is he/she doing?")
     st.markdown('<div class="instruction">Please use the pattern: <b>"I think he/she is..., because..."</b></div>', unsafe_allow_html=True)
+    
+    # ✨ MAPPING KEYWORDS TO SENTENCES (ALL CLOZE)
     sentence_map = {
-        "lie": ["I think he/she is lying, because he looks nervous.", "I think he/she is telling a lie, because his nose is growing.", "I think he/she is being dishonest, because he is hiding something."],
-        "lying": ["I think he/she is lying, because he looks uncomfortable.", "I think he/she is faking it, because his smile looks fake.", "I think he/she is not telling the truth, because..."],
-        "run": ["I think he/she is running, because he is late for school.", "I think he/she is rushing, because the bus is leaving.", "I think he/she is exercising, because he wants to be healthy."],
-        "eat": ["I think he/she is eating a burger, because he looks hungry.", "I think he/she is having lunch, because it is noon.", "I think he/she is enjoying the meal, because it looks delicious."],
-        "sleep": ["I think he/she is sleeping, because he is very tired.", "I think he/she is taking a nap, because he worked hard today.", "I think he/she is dreaming, because he is smiling in his sleep."]
+        "lie": [
+            "I think he/she is lying, because he/she looks __________.",
+            "I think he/she is telling a lie, because __________.",
+            "I think he/she is being dishonest, because __________."
+        ],
+        "lying": [
+            "I think he/she is lying, because he/she looks __________.",
+            "I think he/she is faking it, because his/her smile looks __________.",
+            "I think he/she is not telling the truth, because __________."
+        ],
+        "run": [
+            "I think he/she is running, because he/she is late for __________.",
+            "I think he/she is rushing, because __________.",
+            "I think he/she is exercising, because he/she wants to be __________."
+        ],
+        "eat": [
+            "I think he/she is eating __________, because he/she looks __________.",
+            "I think he/she is having lunch, because it is __________.",
+            "I think the food looks __________, so he/she is __________."
+        ],
+        "sleep": [
+            "I think he/she is sleeping, because he/she feels __________.",
+            "I think he/she is taking a nap, because __________.",
+            "I think he/she is dreaming about __________."
+        ]
     }
-    default_sentences = ["I think he/she is __________, because __________.", "I think he/she looks __________, because __________.", "I think the person is __________, because __________."]
+    
+    default_sentences = [
+        "I think he/she is __________, because __________.", 
+        "I think he/she looks __________, because __________.", 
+        "I think the person is __________, because __________."
+    ]
+    
     col_btn, col_img = st.columns([1, 3])
     with col_btn:
         if st.button("📸 Pick Random Image", type="primary", use_container_width=True):
@@ -447,13 +468,17 @@ with tab_pic:
         if st.session_state.current_image:
             st.image(st.session_state.current_image, use_container_width=True)
             current_name = st.session_state.current_image_name
+            
+            # Determine sentences based on filename
             target_sentences = default_sentences
             for key, sentences in sentence_map.items():
                 if key in current_name:
                     target_sentences = sentences
                     break
+            
             st.markdown('<div class="sentence-box"><div class="sentence-title">💡 Useful Expressions:</div>', unsafe_allow_html=True)
-            for s in target_sentences: st.markdown(f'<div class="sentence-item">👉 {s}</div>', unsafe_allow_html=True)
+            for s in target_sentences: 
+                st.markdown(f'<div class="sentence-item">👉 {s}</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
         else:
             st.info("👈 Please click the button to start.")
@@ -467,10 +492,9 @@ with tab_seat:
         chart_html = get_seating_chart_html(st.session_state.students)
         components.html(chart_html, height=600)
 
-# === Tab 2: Group Battle (DECOUPLED & FIXED) ===
+# === Tab 2: Group Battle ===
 with tab_group:
     st.header("⚔️ Group Battle Mode")
-    
     c_gen, c_info = st.columns([1, 2])
     with c_gen:
         g_size = st.number_input("Group Size", 2, 10, 4)
@@ -504,14 +528,10 @@ with tab_group:
                 if i + j < num_groups:
                     group_idx = i + j
                     group_members = st.session_state.groups[group_idx]
-                    
                     with row_cols[j]:
-                        # 🛠️ AUTO-FIX for KeyError
                         if group_idx not in st.session_state.group_scores:
                             st.session_state.group_scores[group_idx] = 0
-
                         g_score = st.session_state.group_scores[group_idx]
-                        
                         st.markdown(f"""
                         <div class="group-card">
                             <div class="group-title">🛡️ Group {group_idx + 1}</div>
@@ -519,7 +539,6 @@ with tab_group:
                             <div class="group-members">{', '.join(group_members)}</div>
                         </div>
                         """, unsafe_allow_html=True)
-                        
                         if st.button(f"➕ Add Point to G{group_idx + 1}", key=f"btn_g_{group_idx}", use_container_width=True):
                             st.session_state.group_scores[group_idx] += 1
                             st.rerun()
@@ -533,7 +552,6 @@ with tab_score:
         if current_students:
             sel_stu = st.selectbox("Select Student", current_students)
             pts = st.number_input("Points", -10, 10, 1)
-            
             c_update, c_clear = st.columns(2)
             with c_update:
                 if st.button("Update Score", use_container_width=True):
@@ -542,7 +560,6 @@ with tab_score:
                     st.success(f"Updated!")
                     time.sleep(0.5)
                     st.rerun()
-            
             with c_clear:
                 if st.button("🗑️ Reset Individuals", use_container_width=True):
                     st.session_state.scores = {name: 0 for name in st.session_state.students}
