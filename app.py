@@ -407,36 +407,21 @@ with tab_pic:
     # ✨ UPDATED SENTENCE MAP
     sentence_map = {
         "lie": [
-            "I think he/she is lying, because __________.",
-            "I think he/she is not lying, because __________.",
-            "I think he/she is telling a lie, because his/her face looks __________."
+            "I think he/she is telling a lie, because he/she is __________.",
+            "I think he/she is not lying, because he/she is __________.",
         ],
         "lying": [
-            "I think he/she is lying, because __________.",
-            "I think he/she is not lying, because __________.",
-            "I think he/she is telling a lie, because his/her face looks __________."
+            "I think he/she is telling a lie, because he/she is __________.",
+            "I think he/she is not lying, because he/she is __________.",
+            
         ],
         # ✨ NEW "LOVE" CATEGORY
         "love": [
-            "I think they are in love, because __________.",
+            "I think he/she are in love, because he/she is __________.",
             "I think he/she falls in love with him/her, because he/she is __________.",
-            "I think they really like each other, because __________."
+            
         ],
-        "run": [
-            "I think he/she is running, because he/she is late for __________.",
-            "I think he/she is rushing, because __________.",
-            "I think he/she is exercising, because he/she wants to be __________."
-        ],
-        "eat": [
-            "I think he/she is eating __________, because he/she looks __________.",
-            "I think he/she is having lunch, because it is __________.",
-            "I think the food looks __________, so he/she is __________."
-        ],
-        "sleep": [
-            "I think he/she is sleeping, because he/she feels __________.",
-            "I think he/she is taking a nap, because __________.",
-            "I think he/she is dreaming about __________."
-        ]
+        
     }
     
     default_sentences = [
