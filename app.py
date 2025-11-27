@@ -208,11 +208,12 @@ def get_timer_script(end_time, is_running):
 script_html = get_timer_script(st.session_state.timer_end_time, st.session_state.timer_running)
 components.html(script_html, height=0)
 
-# --- ✨ Vis.js STABLE Tree Layout ---
+# --- ✨ Vis.js Interactive Map (TOP-DOWN & TOOLBAR) ---
 def get_visjs_html(text_input):
     lines = text_input.split('\n')
     nodes = set()
     edges = []
+    
     for line in lines:
         if "->" in line:
             parts = line.split("->")
@@ -244,6 +245,7 @@ def get_visjs_html(text_input):
         <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
         <style type="text/css">
             #mynetwork {{ width: 100%; height: 600px; border: 2px solid #ddd; border-radius: 10px; background-color: #fcfcfc; }}
+            .vis-manipulation {{ background: #fff !important; border-radius: 5px; }}
         </style>
     </head>
     <body>
@@ -253,19 +255,22 @@ def get_visjs_html(text_input):
             var edges = new vis.DataSet({edges_json});
             var container = document.getElementById('mynetwork');
             var data = {{ nodes: nodes, edges: edges }};
+            
             var options = {{
                 layout: {{
                     hierarchical: {{
-                        direction: "LR", // Left to Right
+                        direction: "UD", // ✨ UPDATED: Up-Down Layout
                         sortMethod: "directed",
-                        levelSeparation: 200,
-                        nodeSpacing: 100
+                        levelSeparation: 150,
+                        nodeSpacing: 150
                     }}
                 }},
                 nodes: {{ borderWidth: 2, shadow: true, font: {{ face: 'Arial' }} }},
                 edges: {{ width: 2, shadow: true, arrows: 'to', color: {{ color: '#848484' }} }},
-                physics: false, // ✨ STOP FLOATING!
+                physics: false, // Static layout
                 interaction: {{ dragNodes: true, dragView: true, zoomView: true, hover: true }},
+                
+                // ✨ TOOLBAR ENABLED
                 manipulation: {{
                     enabled: true,
                     initiallyActive: true,
@@ -285,7 +290,10 @@ def get_visjs_html(text_input):
                     }}
                 }}
             }};
+            
             var network = new vis.Network(container, data, options);
+            
+            // Double click trigger edit
             network.on("doubleClick", function(params) {{
                 if (params.nodes.length === 1) {{ network.editNode(); }}
             }});
@@ -467,7 +475,7 @@ def get_seating_chart_html(student_list):
 # --- Tabs ---
 tab_pic, tab_mindmap, tab_seat, tab_group, tab_score = st.tabs(["🖼️ Look & Say", "🧠 Interactive Map", "🪑 Seating Chart", "⚔️ Group Battle", "🏆 Scoreboard"])
 
-# === Tab 0: Look & Say ===
+# === Tab 0: Look & Say (WITH UPDATED SENTENCES) ===
 with tab_pic:
     st.header("🖼️ Look & Say: What is he/she doing?")
     st.markdown('<div class="instruction">Please use the pattern: <b>"I think he/she is..., because..."</b></div>', unsafe_allow_html=True)
@@ -552,25 +560,18 @@ with tab_pic:
 # === Tab NEW: Interactive Mind Map ===
 with tab_mindmap:
     st.header("🧠 Interactive Concept Map")
+    st.info("🖱️ **Instructions:** Double-click to edit. Use the toolbar below the map to **Add Nodes** or **Draw Edges**.")
     
-    # Hidden Text Area for "Persistence" (Source Code)
     with st.expander("📝 Edit Source (Permanent Save)"):
-        st.caption("Editing here saves permanently. Edits on the whiteboard below are temporary for this session.")
-        new_map_input = st.text_area(
-            "Structure Code", 
-            value=st.session_state.mindmap_input,
-            height=200
-        )
+        st.caption("Changes here are permanent. Changes on the whiteboard below are temporary.")
+        new_map_input = st.text_area("Structure Code", value=st.session_state.mindmap_input, height=200)
         if new_map_input != st.session_state.mindmap_input:
             st.session_state.mindmap_input = new_map_input
             st.rerun()
 
-    # Whiteboard Area
-    st.info("💡 **Double Click** a node to rename. Use the toolbar to Add/Delete nodes.")
-    
     if st.session_state.mindmap_input.strip():
         html_vis = get_visjs_html(st.session_state.mindmap_input)
-        components.html(html_vis, height=600)
+        components.html(html_vis, height=650) # Increased height for toolbar
     else:
         st.info("Start typing in the Source Code to build your map!")
 
