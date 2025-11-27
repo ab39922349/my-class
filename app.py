@@ -208,7 +208,7 @@ def get_timer_script(end_time, is_running):
 script_html = get_timer_script(st.session_state.timer_end_time, st.session_state.timer_running)
 components.html(script_html, height=0)
 
-# --- ✨ Vis.js Interactive Map ---
+# --- ✨ Vis.js Interactive Map (EDITABLE) ---
 def get_visjs_html(text_input):
     # Parse text input into nodes and edges
     lines = text_input.split('\n')
@@ -225,23 +225,17 @@ def get_visjs_html(text_input):
                 nodes.add(dst)
                 edges.append({"from": src, "to": dst})
     
-    # Create Node objects with styling
     node_list = []
-    for i, node in enumerate(nodes):
-        # Different color for root node (usually the first one encountered or one with many connections)
-        color = "#97C2FC" # Default blue
+    for node in nodes:
+        color = "#97C2FC" 
         shape = "box"
         font_size = 20
-        
-        # Simple heuristic: if it's "Body Language" (likely root), make it special
         if "Body" in node or "Root" in node:
-            color = "#FB7E81" # Reddish
+            color = "#FB7E81"
             font_size = 28
             shape = "ellipse"
-            
         node_list.append({"id": node, "label": node, "color": color, "shape": shape, "font": {"size": font_size}})
     
-    # Dump to JSON
     nodes_json = json.dumps(node_list)
     edges_json = json.dumps(edges)
     
@@ -251,61 +245,53 @@ def get_visjs_html(text_input):
     <head>
         <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
         <style type="text/css">
-            #mynetwork {{
-                width: 100%;
-                height: 600px;
-                border: 2px solid #ddd;
-                border-radius: 10px;
-                background-color: #fcfcfc;
-            }}
+            #mynetwork {{ width: 100%; height: 600px; border: 2px solid #ddd; border-radius: 10px; background-color: #fcfcfc; }}
         </style>
     </head>
     <body>
         <div id="mynetwork"></div>
         <script type="text/javascript">
-            // create an array with nodes
             var nodes = new vis.DataSet({nodes_json});
-
-            // create an array with edges
             var edges = new vis.DataSet({edges_json});
-
-            // create a network
             var container = document.getElementById('mynetwork');
-            var data = {{
-                nodes: nodes,
-                edges: edges
-            }};
+            var data = {{ nodes: nodes, edges: edges }};
             var options = {{
-                nodes: {{
-                    borderWidth: 2,
-                    shadow: true,
-                    font: {{ face: 'Arial' }}
-                }},
-                edges: {{
-                    width: 2,
-                    shadow: true,
-                    arrows: 'to',
-                    color: {{ color: '#848484' }}
-                }},
+                nodes: {{ borderWidth: 2, shadow: true, font: {{ face: 'Arial' }} }},
+                edges: {{ width: 2, shadow: true, arrows: 'to', color: {{ color: '#848484' }} }},
                 physics: {{
                     enabled: true,
-                    barnesHut: {{
-                        gravitationalConstant: -2000,
-                        centralGravity: 0.3,
-                        springLength: 95,
-                        springConstant: 0.04,
-                        damping: 0.09,
-                        avoidOverlap: 0
-                    }},
+                    barnesHut: {{ gravitationalConstant: -2000, centralGravity: 0.3, springLength: 95, springConstant: 0.04, damping: 0.09, avoidOverlap: 0 }},
                     stabilization: {{ iterations: 100 }}
                 }},
-                interaction: {{
-                    dragNodes: true,
-                    dragView: true,
-                    zoomView: true
+                interaction: {{ dragNodes: true, dragView: true, zoomView: true, hover: true }},
+                manipulation: {{
+                    enabled: true,
+                    initiallyActive: true,
+                    addNode: true,
+                    addEdge: true,
+                    editEdge: true,
+                    deleteNode: true,
+                    deleteEdge: true,
+                    editNode: function (data, callback) {{
+                        // Pop-up for renaming
+                        var newLabel = prompt("Edit Node Name:", data.label);
+                        if (newLabel !== null) {{
+                            data.label = newLabel;
+                            callback(data);
+                        }} else {{
+                            callback(null);
+                        }}
+                    }}
                 }}
             }};
             var network = new vis.Network(container, data, options);
+            
+            // Double click trigger edit
+            network.on("doubleClick", function(params) {{
+                if (params.nodes.length === 1) {{
+                    network.editNode();
+                }}
+            }});
         </script>
     </body>
     </html>
@@ -481,14 +467,10 @@ def get_seating_chart_html(student_list):
     """
     return html_code
 
-# --- MAIN APP CONTENT ---
-st.title("🎓 Bodies Speak Louder than Language")
-st.markdown("---")
-
 # --- Tabs ---
 tab_pic, tab_mindmap, tab_seat, tab_group, tab_score = st.tabs(["🖼️ Look & Say", "🧠 Interactive Map", "🪑 Seating Chart", "⚔️ Group Battle", "🏆 Scoreboard"])
 
-# === Tab 0: Look & Say ===
+# === Tab 0: Look & Say (WITH UPDATED SENTENCES) ===
 with tab_pic:
     st.header("🖼️ Look & Say: What is he/she doing?")
     st.markdown('<div class="instruction">Please use the pattern: <b>"I think he/she is..., because..."</b></div>', unsafe_allow_html=True)
@@ -573,27 +555,27 @@ with tab_pic:
 # === Tab NEW: Interactive Mind Map ===
 with tab_mindmap:
     st.header("🧠 Interactive Concept Map")
-    st.caption("Instructions: Type `A -> B` to create a connection. Drag nodes to explore!")
     
-    col_text, col_graph = st.columns([1, 3])
-    
-    with col_text:
+    # Hidden Text Area for "Persistence" (Source Code)
+    with st.expander("📝 Edit Source (Permanent Save)"):
+        st.caption("Editing here saves permanently. Edits on the whiteboard below are temporary for this session.")
         new_map_input = st.text_area(
-            "Define Connections:", 
+            "Structure Code", 
             value=st.session_state.mindmap_input,
-            height=500,
-            help="Example:\nBody -> Hands\nHands -> Fingers"
+            height=200
         )
         if new_map_input != st.session_state.mindmap_input:
             st.session_state.mindmap_input = new_map_input
             st.rerun()
-            
-    with col_graph:
-        if st.session_state.mindmap_input.strip():
-            html_vis = get_visjs_html(st.session_state.mindmap_input)
-            components.html(html_vis, height=600)
-        else:
-            st.info("Start typing on the left to build your map!")
+
+    # Whiteboard Area
+    st.info("💡 **Double Click** a node to rename. Use the toolbar to Add/Delete nodes.")
+    
+    if st.session_state.mindmap_input.strip():
+        html_vis = get_visjs_html(st.session_state.mindmap_input)
+        components.html(html_vis, height=600)
+    else:
+        st.info("Start typing in the Source Code to build your map!")
 
 # === Tab NEW: Seating Chart ===
 with tab_seat:
