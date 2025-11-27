@@ -208,13 +208,11 @@ def get_timer_script(end_time, is_running):
 script_html = get_timer_script(st.session_state.timer_end_time, st.session_state.timer_running)
 components.html(script_html, height=0)
 
-# --- ✨ Vis.js Interactive Map (EDITABLE) ---
+# --- ✨ Vis.js STABLE Tree Layout ---
 def get_visjs_html(text_input):
-    # Parse text input into nodes and edges
     lines = text_input.split('\n')
     nodes = set()
     edges = []
-    
     for line in lines:
         if "->" in line:
             parts = line.split("->")
@@ -256,13 +254,17 @@ def get_visjs_html(text_input):
             var container = document.getElementById('mynetwork');
             var data = {{ nodes: nodes, edges: edges }};
             var options = {{
+                layout: {{
+                    hierarchical: {{
+                        direction: "LR", // Left to Right
+                        sortMethod: "directed",
+                        levelSeparation: 200,
+                        nodeSpacing: 100
+                    }}
+                }},
                 nodes: {{ borderWidth: 2, shadow: true, font: {{ face: 'Arial' }} }},
                 edges: {{ width: 2, shadow: true, arrows: 'to', color: {{ color: '#848484' }} }},
-                physics: {{
-                    enabled: true,
-                    barnesHut: {{ gravitationalConstant: -2000, centralGravity: 0.3, springLength: 95, springConstant: 0.04, damping: 0.09, avoidOverlap: 0 }},
-                    stabilization: {{ iterations: 100 }}
-                }},
+                physics: false, // ✨ STOP FLOATING!
                 interaction: {{ dragNodes: true, dragView: true, zoomView: true, hover: true }},
                 manipulation: {{
                     enabled: true,
@@ -273,7 +275,6 @@ def get_visjs_html(text_input):
                     deleteNode: true,
                     deleteEdge: true,
                     editNode: function (data, callback) {{
-                        // Pop-up for renaming
                         var newLabel = prompt("Edit Node Name:", data.label);
                         if (newLabel !== null) {{
                             data.label = newLabel;
@@ -285,12 +286,8 @@ def get_visjs_html(text_input):
                 }}
             }};
             var network = new vis.Network(container, data, options);
-            
-            // Double click trigger edit
             network.on("doubleClick", function(params) {{
-                if (params.nodes.length === 1) {{
-                    network.editNode();
-                }}
+                if (params.nodes.length === 1) {{ network.editNode(); }}
             }});
         </script>
     </body>
@@ -470,7 +467,7 @@ def get_seating_chart_html(student_list):
 # --- Tabs ---
 tab_pic, tab_mindmap, tab_seat, tab_group, tab_score = st.tabs(["🖼️ Look & Say", "🧠 Interactive Map", "🪑 Seating Chart", "⚔️ Group Battle", "🏆 Scoreboard"])
 
-# === Tab 0: Look & Say (WITH UPDATED SENTENCES) ===
+# === Tab 0: Look & Say ===
 with tab_pic:
     st.header("🖼️ Look & Say: What is he/she doing?")
     st.markdown('<div class="instruction">Please use the pattern: <b>"I think he/she is..., because..."</b></div>', unsafe_allow_html=True)
