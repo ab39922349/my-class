@@ -9,10 +9,10 @@ import json
 # --- Page Config ---
 st.set_page_config(page_title="Bodies Speak Louder than Language", page_icon="🎓", layout="wide")
 
-# --- CSS Styling (Advanced Hiding) ---
+# --- CSS Styling ---
 st.markdown("""
     <style>
-    /* Hide Streamlit UI elements */
+    /* Hide Streamlit UI */
     header[data-testid="stHeader"] {display: none !important; visibility: hidden !important;}
     footer[data-testid="stFooter"] {display: none !important; visibility: hidden !important;}
     div[data-testid="stToolbar"] {display: none !important; visibility: hidden !important;}
@@ -23,41 +23,19 @@ st.markdown("""
         padding-bottom: 1rem !important;
     }
     
-    /* Custom App Styles */
+    /* App Styles */
     .big-font { font-size:30px !important; font-weight: bold; color: #2c3e50; }
     .instruction { font-size:20px; color: #555; margin-bottom: 20px;}
     
-    /* Sentence Box Styling */
-    .sentence-box { 
-        background-color: #e8f4f8; 
-        border-left: 6px solid #3498db; 
-        padding: 20px; 
-        margin-top: 15px; 
-        border-radius: 5px; 
-    }
-    .sentence-title { 
-        color: #2980b9; 
-        font-weight: bold; 
-        font-size: 20px; 
-        margin-bottom: 15px; 
-    }
-    .sentence-item { 
-        font-size: 24px; /* Larger text for projector */
-        color: #2c3e50; 
-        margin-bottom: 15px; 
-        font-family: sans-serif; 
-        line-height: 1.6;
-    }
+    /* Sentence Box */
+    .sentence-box { background-color: #e8f4f8; border-left: 6px solid #3498db; padding: 20px; margin-top: 15px; border-radius: 5px; }
+    .sentence-title { color: #2980b9; font-weight: bold; font-size: 20px; margin-bottom: 15px; }
+    .sentence-item { font-size: 24px; color: #2c3e50; margin-bottom: 15px; font-family: sans-serif; line-height: 1.6; }
     
-    /* Group Card Styling */
+    /* Group Card */
     .group-card {
-        background-color: #fff;
-        padding: 15px;
-        border-radius: 10px;
-        border: 2px solid #d1d5db;
-        margin-bottom: 10px;
-        text-align: center;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        background-color: #fff; padding: 15px; border-radius: 10px; border: 2px solid #d1d5db;
+        margin-bottom: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
     .group-title { font-size: 20px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;}
     .group-score { font-size: 36px; font-weight: 900; color: #e74c3c; margin: 5px 0; }
@@ -91,7 +69,6 @@ def load_data():
             df = pd.read_csv(DATA_FILE)
             if df.empty: return DEFAULT_STUDENTS, default_scores
             if "Name" not in df.columns or "Score" not in df.columns: return DEFAULT_STUDENTS, default_scores
-            
             loaded_students = df["Name"].astype(str).tolist()
             loaded_scores = dict(zip(df["Name"].astype(str), df["Score"].astype(int)))
             for name in loaded_students:
@@ -100,7 +77,7 @@ def load_data():
         except: return DEFAULT_STUDENTS, default_scores
     else: return DEFAULT_STUDENTS, default_scores
 
-# --- Initialize Session State ---
+# --- Session State ---
 if 'students' not in st.session_state or 'scores' not in st.session_state:
     l_students, l_scores = load_data()
     st.session_state.students = l_students
@@ -111,23 +88,30 @@ if 'current_image_name' not in st.session_state: st.session_state.current_image_
 if 'available_images' not in st.session_state: st.session_state.available_images = []
 if 'groups' not in st.session_state: st.session_state.groups = []
 if 'group_scores' not in st.session_state: st.session_state.group_scores = {}
-
 if 'timer_end_time' not in st.session_state: st.session_state.timer_end_time = 0
 if 'timer_running' not in st.session_state: st.session_state.timer_running = False
 
-# --- Sidebar: Settings & Timer ---
+# ✨ MIND MAP STATE
+if 'mindmap_input' not in st.session_state:
+    st.session_state.mindmap_input = """Body Language -> Posture
+Body Language -> Gestures
+Body Language -> Facial Expressions
+Posture -> Open
+Posture -> Closed
+Gestures -> Handshake
+Facial Expressions -> Smile"""
+
+# --- Sidebar ---
 st.sidebar.header("⏱️ Floating Timer")
 t_min = st.sidebar.number_input("Minutes", 0, 60, 5)
 t_sec = st.sidebar.number_input("Seconds", 0, 59, 0)
 col_t1, col_t2 = st.sidebar.columns(2)
-
 with col_t1:
     if st.sidebar.button("▶ Start", type="primary"):
         duration = (t_min * 60) + t_sec
         st.session_state.timer_end_time = time.time() + duration
         st.session_state.timer_running = True
         st.rerun()
-
 with col_t2:
     if st.sidebar.button("⏹ Stop"):
         st.session_state.timer_end_time = 0
@@ -160,11 +144,12 @@ if st.sidebar.button("⚠️ Factory Reset"):
     st.session_state.scores = {name: 0 for name in DEFAULT_STUDENTS}
     st.session_state.groups = []
     st.session_state.group_scores = {}
+    st.session_state.mindmap_input = "Topic -> Subtopic 1\nTopic -> Subtopic 2"
     st.sidebar.success("Data reset!")
     time.sleep(0.5)
     st.rerun()
 
-# --- 🕒 JS INJECTION FOR TIMER ---
+# --- 🕒 Timer Script ---
 def get_timer_script(end_time, is_running):
     if not is_running:
         return """<script>const d=window.parent.document;const e=d.getElementById('custom-floating-timer');if(e){e.remove();}</script>"""
@@ -223,9 +208,109 @@ def get_timer_script(end_time, is_running):
 script_html = get_timer_script(st.session_state.timer_end_time, st.session_state.timer_running)
 components.html(script_html, height=0)
 
-# --- MAIN APP CONTENT ---
-st.title("🎓 Bodies Speak Louder than Language")
-st.markdown("---")
+# --- ✨ Vis.js Interactive Map ---
+def get_visjs_html(text_input):
+    # Parse text input into nodes and edges
+    lines = text_input.split('\n')
+    nodes = set()
+    edges = []
+    
+    for line in lines:
+        if "->" in line:
+            parts = line.split("->")
+            if len(parts) == 2:
+                src = parts[0].strip()
+                dst = parts[1].strip()
+                nodes.add(src)
+                nodes.add(dst)
+                edges.append({"from": src, "to": dst})
+    
+    # Create Node objects with styling
+    node_list = []
+    for i, node in enumerate(nodes):
+        # Different color for root node (usually the first one encountered or one with many connections)
+        color = "#97C2FC" # Default blue
+        shape = "box"
+        font_size = 20
+        
+        # Simple heuristic: if it's "Body Language" (likely root), make it special
+        if "Body" in node or "Root" in node:
+            color = "#FB7E81" # Reddish
+            font_size = 28
+            shape = "ellipse"
+            
+        node_list.append({"id": node, "label": node, "color": color, "shape": shape, "font": {"size": font_size}})
+    
+    # Dump to JSON
+    nodes_json = json.dumps(node_list)
+    edges_json = json.dumps(edges)
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+        <style type="text/css">
+            #mynetwork {{
+                width: 100%;
+                height: 600px;
+                border: 2px solid #ddd;
+                border-radius: 10px;
+                background-color: #fcfcfc;
+            }}
+        </style>
+    </head>
+    <body>
+        <div id="mynetwork"></div>
+        <script type="text/javascript">
+            // create an array with nodes
+            var nodes = new vis.DataSet({nodes_json});
+
+            // create an array with edges
+            var edges = new vis.DataSet({edges_json});
+
+            // create a network
+            var container = document.getElementById('mynetwork');
+            var data = {{
+                nodes: nodes,
+                edges: edges
+            }};
+            var options = {{
+                nodes: {{
+                    borderWidth: 2,
+                    shadow: true,
+                    font: {{ face: 'Arial' }}
+                }},
+                edges: {{
+                    width: 2,
+                    shadow: true,
+                    arrows: 'to',
+                    color: {{ color: '#848484' }}
+                }},
+                physics: {{
+                    enabled: true,
+                    barnesHut: {{
+                        gravitationalConstant: -2000,
+                        centralGravity: 0.3,
+                        springLength: 95,
+                        springConstant: 0.04,
+                        damping: 0.09,
+                        avoidOverlap: 0
+                    }},
+                    stabilization: {{ iterations: 100 }}
+                }},
+                interaction: {{
+                    dragNodes: true,
+                    dragView: true,
+                    zoomView: true
+                }}
+            }};
+            var network = new vis.Network(container, data, options);
+        </script>
+    </body>
+    </html>
+    """
+    return html
 
 # --- HTML Generator: Seating Chart ---
 def get_seating_chart_html(student_list):
@@ -396,40 +481,54 @@ def get_seating_chart_html(student_list):
     """
     return html_code
 
-# --- Tabs ---
-tab_pic, tab_seat, tab_group, tab_score = st.tabs(["🖼️ Look & Say", "🪑 Seating Chart", "⚔️ Group Battle", "🏆 Scoreboard"])
+# --- MAIN APP CONTENT ---
+st.title("🎓 Bodies Speak Louder than Language")
+st.markdown("---")
 
-# === Tab 0: Look & Say (WITH UPDATED SENTENCES) ===
+# --- Tabs ---
+tab_pic, tab_mindmap, tab_seat, tab_group, tab_score = st.tabs(["🖼️ Look & Say", "🧠 Interactive Map", "🪑 Seating Chart", "⚔️ Group Battle", "🏆 Scoreboard"])
+
+# === Tab 0: Look & Say ===
 with tab_pic:
     st.header("🖼️ Look & Say: What is he/she doing?")
     st.markdown('<div class="instruction">Please use the pattern: <b>"I think he/she is..., because..."</b></div>', unsafe_allow_html=True)
-    
-    # ✨ UPDATED SENTENCE MAP
     sentence_map = {
         "lie": [
-            "I think he/she is telling a lie, because he/she is __________.",
-            "I think he/she is not lying, because he/she is __________.",
+            "I think he/she is lying, because he/she looks __________.",
+            "I think he/she is not lying, because __________.",
+            "I think he/she is telling a lie, because his/her face looks __________."
         ],
         "lying": [
-            "I think he/she is telling a lie, because he/she is __________.",
-            "I think he/she is not lying, because he/she is __________.",
-            
+            "I think he/she is lying, because he/she looks __________.",
+            "I think he/she is not lying, because __________.",
+            "I think he/she is telling a lie, because his/her face looks __________."
         ],
-        # ✨ NEW "LOVE" CATEGORY
         "love": [
-            "I think he/she is in love with her, because he/she is __________.",
-            "I think he/she doesn't fall in love with him/her, because he/she is __________.",
-            
+            "I think they are in love, because __________.",
+            "I think he/she falls in love with him/her, because he/she is __________.",
+            "I think they really like each other, because __________."
         ],
-        
+        "run": [
+            "I think he/she is running, because he/she is late for __________.",
+            "I think he/she is rushing, because __________.",
+            "I think he/she is exercising, because he/she wants to be __________."
+        ],
+        "eat": [
+            "I think he/she is eating __________, because he/she looks __________.",
+            "I think he/she is having lunch, because it is __________.",
+            "I think the food looks __________, so he/she is __________."
+        ],
+        "sleep": [
+            "I think he/she is sleeping, because he/she feels __________.",
+            "I think he/she is taking a nap, because __________.",
+            "I think he/she is dreaming about __________."
+        ]
     }
-    
     default_sentences = [
         "I think he/she is __________, because __________.", 
         "I think he/she looks __________, because __________.", 
         "I think the person is __________, because __________."
     ]
-    
     col_btn, col_img = st.columns([1, 3])
     with col_btn:
         if st.button("📸 Pick Random Image", type="primary", use_container_width=True):
@@ -459,20 +558,42 @@ with tab_pic:
         if st.session_state.current_image:
             st.image(st.session_state.current_image, use_container_width=True)
             current_name = st.session_state.current_image_name
-            
-            # Determine sentences based on filename
             target_sentences = default_sentences
             for key, sentences in sentence_map.items():
                 if key in current_name:
                     target_sentences = sentences
                     break
-            
             st.markdown('<div class="sentence-box"><div class="sentence-title">💡 Useful Expressions:</div>', unsafe_allow_html=True)
             for s in target_sentences: 
                 st.markdown(f'<div class="sentence-item">👉 {s}</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
         else:
             st.info("👈 Please click the button to start.")
+
+# === Tab NEW: Interactive Mind Map ===
+with tab_mindmap:
+    st.header("🧠 Interactive Concept Map")
+    st.caption("Instructions: Type `A -> B` to create a connection. Drag nodes to explore!")
+    
+    col_text, col_graph = st.columns([1, 3])
+    
+    with col_text:
+        new_map_input = st.text_area(
+            "Define Connections:", 
+            value=st.session_state.mindmap_input,
+            height=500,
+            help="Example:\nBody -> Hands\nHands -> Fingers"
+        )
+        if new_map_input != st.session_state.mindmap_input:
+            st.session_state.mindmap_input = new_map_input
+            st.rerun()
+            
+    with col_graph:
+        if st.session_state.mindmap_input.strip():
+            html_vis = get_visjs_html(st.session_state.mindmap_input)
+            components.html(html_vis, height=600)
+        else:
+            st.info("Start typing on the left to build your map!")
 
 # === Tab NEW: Seating Chart ===
 with tab_seat:
