@@ -9,34 +9,23 @@ import json
 # --- Page Config (Wide Mode) ---
 st.set_page_config(page_title="Bodies Speak Louder than Language", page_icon="🎓", layout="wide")
 
-# --- CSS Styling (Ultimate Clean) ---
+# --- CSS Styling ---
 st.markdown("""
     <style>
-    /* 1. HIDE TOP DECORATION (The Blue/Colored Bar) */
+    /* 1. HIDE ALL STREAMLIT UI ELEMENTS (Top bar, hamburger, footer) */
+    header[data-testid="stHeader"] {display: none !important; visibility: hidden !important;}
+    footer[data-testid="stFooter"] {display: none !important; visibility: hidden !important;}
+    div[data-testid="stToolbar"] {display: none !important; visibility: hidden !important;}
+    .stDeployButton {display: none !important;}
+    
+    /* 2. HIDE TOP DECORATION LINE (Rainbow/Blue bar at very top) */
     div[data-testid="stDecoration"] {
         display: none !important;
         visibility: hidden !important;
         height: 0px !important;
     }
-    
-    /* 2. HIDE HEADER & TOOLBAR (Hamburger menu, Deploy button) */
-    header[data-testid="stHeader"] {
-        display: none !important;
-        visibility: hidden !important;
-    }
-    div[data-testid="stToolbar"] {
-        display: none !important; 
-        visibility: hidden !important;
-    }
-    .stDeployButton {display: none !important;}
-    
-    /* 3. HIDE FOOTER */
-    footer[data-testid="stFooter"] {
-        display: none !important; 
-        visibility: hidden !important;
-    }
 
-    /* 4. MAXIMIZE LAYOUT (Remove white space at top) */
+    /* 3. LAYOUT ADJUSTMENTS */
     .main .block-container {
         padding-top: 1rem !important;
         padding-bottom: 1rem !important;
@@ -46,10 +35,11 @@ st.markdown("""
     /* --- Custom App Styles --- */
     .big-font { font-size:30px !important; font-weight: bold; color: #2c3e50; }
     
-    /* Sentence Box Styling */
+    /* Sentence Box Styling - CLEAN VERSION (No Blue Border) */
     .sentence-box { 
         background-color: #f8f9fa; 
-        border-left: 8px solid #3498db; 
+        /* border-left: 8px solid #3498db;  <-- REMOVED THIS LINE */
+        border: 1px solid #e0e0e0; /* Added subtle grey border instead */
         padding: 25px; 
         border-radius: 10px; 
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
@@ -66,7 +56,7 @@ st.markdown("""
         line-height: 1.4;
     }
 
-    /* ✨ BUTTON-STYLE RADIO OPTIONS (NO CIRCLES) ✨ */
+    /* ✨ BUTTON-STYLE RADIO OPTIONS ✨ */
     div[role="radiogroup"] label > div:first-child { display: none !important; }
     .stRadio [role="radiogroup"] { flex-direction: column; gap: 12px; width: 100%; }
     .stRadio label {
