@@ -9,7 +9,7 @@ import json
 # --- Page Config ---
 st.set_page_config(page_title="Bodies Speak Louder than Language", page_icon="🎓", layout="wide")
 
-# --- CSS Styling (Clean Interface + Big Buttons) ---
+# --- CSS Styling ---
 st.markdown("""
     <style>
     /* Hide Streamlit UI elements */
@@ -49,38 +49,43 @@ st.markdown("""
         line-height: 1.6;
     }
 
-    /* ✨ BIG BUTTON RADIO STYLING ✨ */
-    /* Target radio options inside the sentence box */
-    .stRadio > div[role="radiogroup"] {
-        gap: 15px; /* Space between buttons */
+    /* ✨ HORIZONTAL BUTTON RADIO STYLING ✨ */
+    /* Ensure the container uses flexbox for horizontal layout */
+    .stRadio [role="radiogroup"] {
+        flex-direction: row;
+        gap: 10px;
+        width: 100%;
     }
     
-    /* The label (the clickable button area) */
+    /* The clickable label */
     .stRadio label {
         background-color: #ffffff;
-        padding: 20px 25px; /* Big padding */
-        border-radius: 15px; /* Rounded corners */
-        border: 2px solid #bdc3c7; /* Subtle border */
+        padding: 15px 10px;
+        border-radius: 10px;
+        border: 2px solid #bdc3c7;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         cursor: pointer;
         transition: all 0.2s ease;
-        width: 100%; /* Full width */
+        text-align: center;
+        flex: 1; /* Make buttons equal width */
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
-    /* The text inside the button */
+    /* The text inside */
     .stRadio label p {
-        font-size: 24px !important; /* Big Text */
-        font-weight: 500;
+        font-size: 20px !important;
+        font-weight: 600;
         color: #2c3e50;
         margin: 0;
     }
 
-    /* Hover Effect */
+    /* Hover & Selection */
     .stRadio label:hover {
         border-color: #3498db;
         background-color: #f0f8ff;
-        transform: translateY(-2px); /* Slight lift */
-        box-shadow: 0 6px 8px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
     }
 
     /* Group Card Styling */
@@ -148,6 +153,34 @@ if 'group_scores' not in st.session_state: st.session_state.group_scores = {}
 
 if 'timer_end_time' not in st.session_state: st.session_state.timer_end_time = 0
 if 'timer_running' not in st.session_state: st.session_state.timer_running = False
+
+# --- ✨ HELPER: PICK NEW IMAGE FUNCTION ---
+def pick_new_image():
+    script_dir = os.path.dirname(os.path.abspath(__file__)) 
+    folder_path = os.path.join(script_dir, "images")
+    
+    if not os.path.exists(folder_path):
+        st.error(f"⚠️ Image folder not found!\nPath: {folder_path}")
+        return
+
+    valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+    try:
+        all_files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in valid_extensions]
+        if not all_files:
+            st.warning("⚠️ The 'images' folder is empty!")
+        else:
+            if not st.session_state.available_images:
+                st.session_state.available_images = all_files.copy()
+                random.shuffle(st.session_state.available_images)
+                st.toast("🔄 All images shown! Reshuffling deck...", icon="🔀")
+            while st.session_state.available_images:
+                selected_img = st.session_state.available_images.pop()
+                full_path = os.path.join(folder_path, selected_img)
+                if os.path.exists(full_path):
+                    st.session_state.current_image = full_path
+                    st.session_state.current_image_name = selected_img.lower()
+                    break
+    except Exception as e: st.error(f"Error: {e}")
 
 # --- Sidebar: Settings & Timer ---
 st.sidebar.header("⏱️ Floating Timer")
@@ -433,7 +466,7 @@ def get_seating_chart_html(student_list):
 # --- Tabs ---
 tab_pic, tab_seat, tab_group, tab_score = st.tabs(["🖼️ Look & Say", "🪑 Seating Chart", "⚔️ Group Battle", "🏆 Scoreboard"])
 
-# === Tab 0: Look & Say (WITH BIG BUTTONS) ===
+# === Tab 0: Look & Say (WITH HORIZONTAL QUIZ & AUTO ADVANCE) ===
 with tab_pic:
     st.header("🖼️ Look & Say: What is he/she doing?")
     
@@ -471,28 +504,9 @@ with tab_pic:
     with col_btn:
         st.markdown('<div class="instruction">Click to pick an image for discussion.</div>', unsafe_allow_html=True)
         if st.button("📸 Pick Random Image", type="primary", use_container_width=True):
-            script_dir = os.path.dirname(os.path.abspath(__file__)) 
-            folder_path = os.path.join(script_dir, "images")
-            if not os.path.exists(folder_path):
-                st.error(f"⚠️ Image folder not found!\nPath: {folder_path}")
-            else:
-                valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
-                try:
-                    all_files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in valid_extensions]
-                    if not all_files: st.warning("⚠️ The 'images' folder is empty!")
-                    else:
-                        if not st.session_state.available_images:
-                            st.session_state.available_images = all_files.copy()
-                            random.shuffle(st.session_state.available_images)
-                            st.toast("🔄 All images shown! Reshuffling deck...", icon="🔀")
-                        while st.session_state.available_images:
-                            selected_img = st.session_state.available_images.pop()
-                            full_path = os.path.join(folder_path, selected_img)
-                            if os.path.exists(full_path):
-                                st.session_state.current_image = full_path
-                                st.session_state.current_image_name = selected_img.lower()
-                                break
-                except Exception as e: st.error(f"Error: {e}")
+            pick_new_image()
+            st.rerun()
+
     with col_img:
         if st.session_state.current_image:
             st.image(st.session_state.current_image, use_container_width=True)
@@ -509,13 +523,23 @@ with tab_pic:
                     "touching or scratching themselves"
                 ]
                 
-                # Radio buttons now look like blocks due to CSS at top
+                # ✨ HORIZONTAL OPTIONS & AUTO-ADVANCE LOGIC
                 selection = st.radio(
                     "Select one option:", 
                     lying_options, 
-                    key=f"radio_{current_name}", 
+                    key=f"radio_{current_name}", # Unique key resets selection on image change
+                    index=None,                  # No default selection
+                    horizontal=True,             # Horizontal Layout
                     label_visibility="collapsed"
                 )
+                
+                # Logic: If user picks ANY option -> Correct! -> Next Image
+                if selection:
+                    st.success("✅ Correct! That is a sign of lying!")
+                    st.balloons()
+                    time.sleep(1.0) # Pause to show success
+                    pick_new_image() # Auto pick next
+                    st.rerun() # Refresh page
                 
                 st.markdown('</div>', unsafe_allow_html=True)
                 
