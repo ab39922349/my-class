@@ -9,22 +9,41 @@ import json
 # --- Page Config (Wide Mode) ---
 st.set_page_config(page_title="Bodies Speak Louder than Language", page_icon="🎓", layout="wide")
 
-# --- CSS Styling ---
+# --- CSS Styling (Ultimate Clean) ---
 st.markdown("""
     <style>
-    /* Hide Streamlit UI elements */
-    header[data-testid="stHeader"] {display: none !important; visibility: hidden !important;}
-    footer[data-testid="stFooter"] {display: none !important; visibility: hidden !important;}
-    div[data-testid="stToolbar"] {display: none !important; visibility: hidden !important;}
+    /* 1. HIDE TOP DECORATION (The Blue/Colored Bar) */
+    div[data-testid="stDecoration"] {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0px !important;
+    }
+    
+    /* 2. HIDE HEADER & TOOLBAR (Hamburger menu, Deploy button) */
+    header[data-testid="stHeader"] {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    div[data-testid="stToolbar"] {
+        display: none !important; 
+        visibility: hidden !important;
+    }
     .stDeployButton {display: none !important;}
     
+    /* 3. HIDE FOOTER */
+    footer[data-testid="stFooter"] {
+        display: none !important; 
+        visibility: hidden !important;
+    }
+
+    /* 4. MAXIMIZE LAYOUT (Remove white space at top) */
     .main .block-container {
         padding-top: 1rem !important;
         padding-bottom: 1rem !important;
         max-width: 95% !important;
     }
     
-    /* Custom App Styles */
+    /* --- Custom App Styles --- */
     .big-font { font-size:30px !important; font-weight: bold; color: #2c3e50; }
     
     /* Sentence Box Styling */
@@ -47,7 +66,7 @@ st.markdown("""
         line-height: 1.4;
     }
 
-    /* ✨ BUTTON-STYLE RADIO OPTIONS ✨ */
+    /* ✨ BUTTON-STYLE RADIO OPTIONS (NO CIRCLES) ✨ */
     div[role="radiogroup"] label > div:first-child { display: none !important; }
     .stRadio [role="radiogroup"] { flex-direction: column; gap: 12px; width: 100%; }
     .stRadio label {
@@ -162,7 +181,7 @@ def pick_next_image(keywords, state_prefix):
         if not filtered_files:
             st.warning(f"⚠️ No images found matching: {', '.join(keywords)}.")
         else:
-            # Get current index for this game type
+            # Get current index
             idx_key = f"{state_prefix}_index"
             current_idx = st.session_state[idx_key]
             
@@ -180,7 +199,6 @@ def pick_next_image(keywords, state_prefix):
             
             # Increment index for NEXT time
             next_idx = current_idx + 1
-            # If next index exceeds length, wrap to 0 (Silent Loop)
             if next_idx >= len(filtered_files):
                 next_idx = 0
             
