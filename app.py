@@ -35,14 +35,10 @@ st.markdown("""
     /* --- Custom App Styles --- */
     .big-font { font-size:30px !important; font-weight: bold; color: #2c3e50; }
     
-    /* Sentence Box Styling - CLEAN VERSION (No Blue Border) */
+    /* Sentence Box Styling - ULTRA CLEAN (No background, no border) */
     .sentence-box { 
-        background-color: #f8f9fa; 
-        /* border-left: 8px solid #3498db;  <-- REMOVED THIS LINE */
-        border: 1px solid #e0e0e0; /* Added subtle grey border instead */
-        padding: 25px; 
-        border-radius: 10px; 
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        /* Removed background-color, border, border-radius, box-shadow */
+        padding: 20px 5px; /* Adjusted padding slightly */
         height: 100%;
         display: flex;
         flex-direction: column;
