@@ -9,7 +9,7 @@ import json
 # --- Page Config ---
 st.set_page_config(page_title="Bodies Speak Louder than Language", page_icon="🎓", layout="wide")
 
-# --- CSS Styling (Clean Interface + Radio Fix) ---
+# --- CSS Styling (Clean Interface + Big Buttons) ---
 st.markdown("""
     <style>
     /* Hide Streamlit UI elements */
@@ -38,30 +38,51 @@ st.markdown("""
     .sentence-title { 
         color: #2980b9; 
         font-weight: bold; 
-        font-size: 20px; 
-        margin-bottom: 15px; 
+        font-size: 24px; 
+        margin-bottom: 20px; 
     }
     .sentence-item { 
-        font-size: 24px; 
+        font-size: 24px;
         color: #2c3e50; 
         margin-bottom: 15px; 
         font-family: sans-serif; 
         line-height: 1.6;
     }
 
-    /* Radio Button Styling inside Sentence Box */
-    .sentence-box .stRadio > div {
-        gap: 15px; /* Space between options */
-    }
-    .sentence-box .stRadio label {
-        font-size: 22px !important; /* Larger font for options */
-        color: #2c3e50 !important;
-        background-color: rgba(255,255,255,0.7); /* Slight background for readability */
-        padding: 10px;
-        border-radius: 8px;
-        border: 1px solid #d1d5db;
+    /* ✨ BIG BUTTON RADIO STYLING ✨ */
+    /* Target radio options inside the sentence box */
+    .stRadio > div[role="radiogroup"] {
+        gap: 15px; /* Space between buttons */
     }
     
+    /* The label (the clickable button area) */
+    .stRadio label {
+        background-color: #ffffff;
+        padding: 20px 25px; /* Big padding */
+        border-radius: 15px; /* Rounded corners */
+        border: 2px solid #bdc3c7; /* Subtle border */
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        width: 100%; /* Full width */
+    }
+    
+    /* The text inside the button */
+    .stRadio label p {
+        font-size: 24px !important; /* Big Text */
+        font-weight: 500;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    /* Hover Effect */
+    .stRadio label:hover {
+        border-color: #3498db;
+        background-color: #f0f8ff;
+        transform: translateY(-2px); /* Slight lift */
+        box-shadow: 0 6px 8px rgba(0,0,0,0.1);
+    }
+
     /* Group Card Styling */
     .group-card {
         background-color: #fff;
@@ -412,13 +433,12 @@ def get_seating_chart_html(student_list):
 # --- Tabs ---
 tab_pic, tab_seat, tab_group, tab_score = st.tabs(["🖼️ Look & Say", "🪑 Seating Chart", "⚔️ Group Battle", "🏆 Scoreboard"])
 
-# === Tab 0: Look & Say (WITH LYING OPTIONS) ===
+# === Tab 0: Look & Say (WITH BIG BUTTONS) ===
 with tab_pic:
     st.header("🖼️ Look & Say: What is he/she doing?")
     
     # ✨ SENTENCE MAP (For non-lying images)
     sentence_map = {
-        # Removed 'lie' and 'lying' from here as they are handled separately
         "love": [
             "I think they are in love, because __________.",
             "I think he/she falls in love with him/her, because he/she is __________.",
@@ -489,8 +509,7 @@ with tab_pic:
                     "touching or scratching themselves"
                 ]
                 
-                # Use radio button with custom styling wrapper
-                # We use current_name in the key to reset current selection when image changes
+                # Radio buttons now look like blocks due to CSS at top
                 selection = st.radio(
                     "Select one option:", 
                     lying_options, 
@@ -561,14 +580,10 @@ with tab_group:
                 if i + j < num_groups:
                     group_idx = i + j
                     group_members = st.session_state.groups[group_idx]
-                    
                     with row_cols[j]:
-                        # 🛠️ AUTO-FIX for KeyError
                         if group_idx not in st.session_state.group_scores:
                             st.session_state.group_scores[group_idx] = 0
-
                         g_score = st.session_state.group_scores[group_idx]
-                        
                         st.markdown(f"""
                         <div class="group-card">
                             <div class="group-title">🛡️ Group {group_idx + 1}</div>
@@ -576,7 +591,6 @@ with tab_group:
                             <div class="group-members">{', '.join(group_members)}</div>
                         </div>
                         """, unsafe_allow_html=True)
-                        
                         if st.button(f"➕ Add Point to G{group_idx + 1}", key=f"btn_g_{group_idx}", use_container_width=True):
                             st.session_state.group_scores[group_idx] += 1
                             st.rerun()
@@ -590,7 +604,6 @@ with tab_score:
         if current_students:
             sel_stu = st.selectbox("Select Student", current_students)
             pts = st.number_input("Points", -10, 10, 1)
-            
             c_update, c_clear = st.columns(2)
             with c_update:
                 if st.button("Update Score", use_container_width=True):
@@ -599,7 +612,6 @@ with tab_score:
                     st.success(f"Updated!")
                     time.sleep(0.5)
                     st.rerun()
-            
             with c_clear:
                 if st.button("🗑️ Reset Individuals", use_container_width=True):
                     st.session_state.scores = {name: 0 for name in st.session_state.students}
