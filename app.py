@@ -6,7 +6,7 @@ import pandas as pd
 import os
 import json
 
-# --- Page Config ---
+# --- Page Config (Wide Mode) ---
 st.set_page_config(page_title="Bodies Speak Louder than Language", page_icon="🎓", layout="wide")
 
 # --- CSS Styling ---
@@ -19,65 +19,70 @@ st.markdown("""
     .stDeployButton {display: none !important;}
     
     .main .block-container {
-        padding-top: 2rem !important;
+        padding-top: 1rem !important; /* Reduce top padding */
         padding-bottom: 1rem !important;
+        max-width: 95% !important; /* Use more screen width */
     }
     
     /* Custom App Styles */
     .big-font { font-size:30px !important; font-weight: bold; color: #2c3e50; }
-    .instruction { font-size:20px; color: #555; margin-bottom: 20px;}
     
-    /* Sentence Box Styling */
+    /* Sentence Box Styling (Right Column) */
     .sentence-box { 
-        background-color: #e8f4f8; 
-        border-left: 6px solid #3498db; 
-        padding: 20px; 
-        margin-top: 15px; 
-        border-radius: 5px; 
+        background-color: #f8f9fa; 
+        border-left: 8px solid #3498db; 
+        padding: 25px; 
+        border-radius: 10px; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        height: 100%; /* Fill height */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
     .sentence-title { 
-        color: #2980b9; 
-        font-weight: bold; 
-        font-size: 24px; 
-        margin-bottom: 20px; 
+        color: #2c3e50; 
+        font-weight: 800; 
+        font-size: 28px; 
+        margin-bottom: 25px; 
+        line-height: 1.4;
     }
 
-    /* ✨ BUTTON-STYLE RADIO OPTIONS (NO CIRCLES) ✨ */
+    /* ✨ BUTTON-STYLE RADIO OPTIONS ✨ */
     div[role="radiogroup"] label > div:first-child {
         display: none !important;
     }
+    /* Vertical stack in the side column looks better, 
+       but keeping horizontal if space permits or creating a grid */
     .stRadio [role="radiogroup"] {
-        flex-direction: row;
+        flex-direction: column; /* Stack vertically on the side for better readability */
         gap: 15px;
         width: 100%;
     }
     .stRadio label {
         background-color: #ffffff;
-        padding: 20px 10px;
+        padding: 20px 15px;
         border-radius: 12px;
         border: 2px solid #e0e0e0;
         box-shadow: 0 4px 0px rgba(0,0,0,0.05);
         cursor: pointer;
         transition: all 0.1s ease;
-        text-align: center;
-        flex: 1;
+        text-align: left; /* Align text left for easier reading */
         display: flex;
         align-items: center;
-        justify-content: center;
-        min-height: 80px;
+        width: 100%;
     }
     .stRadio label p {
-        font-size: 20px !important;
+        font-size: 22px !important;
         font-weight: 600;
         color: #555;
         margin: 0;
-        line-height: 1.2;
+        line-height: 1.3;
     }
     .stRadio label:hover {
         border-color: #3498db;
         color: #3498db;
-        transform: translateY(-2px);
-        box-shadow: 0 6px 0px rgba(0,0,0,0.1);
+        transform: translateX(5px); /* Slide effect */
+        background-color: #f0f8ff;
     }
     
     /* Group Card Styling */
@@ -168,7 +173,6 @@ def pick_next_image(keywords, state_prefix):
     try:
         all_files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in valid_extensions]
         
-        # Filter files
         filtered_files = []
         for f in all_files:
             for k in keywords:
@@ -176,33 +180,26 @@ def pick_next_image(keywords, state_prefix):
                     filtered_files.append(f)
                     break
         
-        # Sort alphabetically to ensure sequence
         filtered_files.sort()
         
         if not filtered_files:
             st.warning(f"⚠️ No images found matching: {', '.join(keywords)}.")
         else:
-            # Get current index for this game type
             idx_key = f"{state_prefix}_index"
             current_idx = st.session_state[idx_key]
             
-            # Safety check: if index out of bounds, reset to 0
             if current_idx >= len(filtered_files):
                 current_idx = 0
             
-            # Select image
             selected_img = filtered_files[current_idx]
             
-            # Update Path
             full_path = os.path.join(folder_path, selected_img)
             st.session_state[f"{state_prefix}_image"] = full_path
             st.session_state[f"{state_prefix}_image_name"] = selected_img.lower()
             
-            # Increment index for NEXT time (Loop back to 0 if end)
             next_idx = current_idx + 1
             if next_idx >= len(filtered_files):
                 next_idx = 0
-            
             st.session_state[idx_key] = next_idx
             
     except Exception as e: st.error(f"Error: {e}")
@@ -503,15 +500,188 @@ with tab_pic:
     # ====== GAME 1: LYING ======
     with stab_lie:
         st.subheader("🤥 The Lying Game")
-        col_btn_l, col_img_l = st.columns([1, 3])
-        with col_btn_l:
-            st.markdown('<div class="instruction">Click to get a "lying" image.</div>', unsafe_allow_html=True)
-            if st.button("📸 Start / Next Image", type="primary", use_container_width=True, key="btn_pick_lie"):
-                # Sequential Pick
-                pick_next_image(["lie", "lying"], "lying") 
-                st.rerun()
-
-        with col_img_l:
+        
+        # ✨ Layout: Side-by-Side (Image Left, Options Right)
+        col_img, col_opt = st.columns([1.5, 1])
+        
+        with col_img:
             if st.session_state.lying_image:
                 st.image(st.session_state.lying_image, use_container_width=True)
-                current_name_l = st.
+            else:
+                st.info("👋 Welcome! Click 'Start' to begin.")
+                
+        with col_opt:
+            # Control Button (Top of right column)
+            if st.button("📸 Start / Next Image", key="btn_pick_lie", use_container_width=True, type="primary"):
+                pick_next_image(["lie", "lying"], "lying")
+                st.rerun()
+            
+            # Options (Only if image is loaded)
+            if st.session_state.lying_image:
+                current_name_l = st.session_state.lying_image_name.lower()
+                st.markdown('<div class="sentence-box">', unsafe_allow_html=True)
+                st.markdown('<div class="sentence-title">🤔 What is a common sign of lying?</div>', unsafe_allow_html=True)
+                
+                lying_options = [
+                    "Making stiff body movements",
+                    "Making eye movements",
+                    "Touching or scratching themselves"
+                ]
+                
+                # Vertical layout for buttons in the side column looks better
+                selection_l = st.radio(
+                    "Select one option:", lying_options, 
+                    key=f"radio_lie_{current_name_l}_{st.session_state.quiz_counter}", 
+                    index=None, label_visibility="collapsed"
+                )
+                
+                if selection_l:
+                    st.success("✅ Correct!")
+                    st.balloons()
+                    st.session_state.quiz_counter += 1 
+                    time.sleep(1.0)
+                    pick_next_image(["lie", "lying"], "lying")
+                    st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+
+    # ====== GAME 2: LOVE ======
+    with stab_love:
+        st.subheader("😍 The Love Game")
+        
+        # ✨ Layout: Side-by-Side
+        col_img_v, col_opt_v = st.columns([1.5, 1])
+        
+        with col_img_v:
+            if st.session_state.love_image:
+                st.image(st.session_state.love_image, use_container_width=True)
+            else:
+                st.info("👋 Welcome! Click 'Start' to begin.")
+        
+        with col_opt_v:
+            if st.button("📸 Start / Next Image", key="btn_pick_love", use_container_width=True, type="primary"):
+                pick_next_image("love", "love") 
+                st.rerun()
+                
+            if st.session_state.love_image:
+                current_name_v = st.session_state.love_image_name.lower()
+                st.markdown('<div class="sentence-box">', unsafe_allow_html=True)
+                st.markdown('<div class="sentence-title">🥰 What is a sign of attraction?</div>', unsafe_allow_html=True)
+                
+                love_options = [
+                    "Their eyes do the talking.",
+                    "They copy the person's actions.",
+                    "They try to get closer."
+                ]
+                
+                selection_v = st.radio(
+                    "Select one option:", love_options, 
+                    key=f"radio_love_{current_name_v}_{st.session_state.quiz_counter}", 
+                    index=None, label_visibility="collapsed"
+                )
+                
+                if selection_v:
+                    st.success("✅ Correct!")
+                    st.balloons()
+                    st.session_state.quiz_counter += 1 
+                    time.sleep(1.0)
+                    pick_next_image("love", "love")
+                    st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+
+# === Tab NEW: Seating Chart ===
+with tab_seat:
+    st.header("🪑 Seating Chart Picker")
+    if not st.session_state.students:
+        st.error("Student list is empty! Please add names in the Settings sidebar.")
+    else:
+        chart_html = get_seating_chart_html(st.session_state.students)
+        components.html(chart_html, height=600)
+
+# === Tab 2: Group Battle ===
+with tab_group:
+    st.header("⚔️ Group Battle Mode")
+    c_gen, c_info = st.columns([1, 2])
+    with c_gen:
+        g_size = st.number_input("Group Size", 2, 10, 4)
+        if st.button("🚀 Generate New Groups"):
+            shuffled = st.session_state.students.copy()
+            random.shuffle(shuffled)
+            groups = [shuffled[i:i + g_size] for i in range(0, len(shuffled), g_size)]
+            st.session_state.groups = groups 
+            st.session_state.group_scores = {i: 0 for i in range(len(groups))}
+            st.success("Groups generated & Scores reset!")
+            st.rerun()
+            
+    with c_info:
+        if st.session_state.groups:
+            if st.button("🗑️ Reset Group Scores"):
+                st.session_state.group_scores = {i: 0 for i in range(len(st.session_state.groups))}
+                st.toast("Group scores cleared!")
+                time.sleep(0.5)
+                st.rerun()
+        else:
+            st.info("👈 Set size and click Generate to start battle!")
+
+    st.divider()
+
+    if st.session_state.groups:
+        num_groups = len(st.session_state.groups)
+        cols_per_row = 3 
+        for i in range(0, num_groups, cols_per_row):
+            row_cols = st.columns(cols_per_row)
+            for j in range(cols_per_row):
+                if i + j < num_groups:
+                    group_idx = i + j
+                    group_members = st.session_state.groups[group_idx]
+                    with row_cols[j]:
+                        if group_idx not in st.session_state.group_scores:
+                            st.session_state.group_scores[group_idx] = 0
+                        g_score = st.session_state.group_scores[group_idx]
+                        st.markdown(f"""
+                        <div class="group-card">
+                            <div class="group-title">🛡️ Group {group_idx + 1}</div>
+                            <div class="group-score">{g_score} pts</div>
+                            <div class="group-members">{', '.join(group_members)}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        if st.button(f"➕ Add Point to G{group_idx + 1}", key=f"btn_g_{group_idx}", use_container_width=True):
+                            st.session_state.group_scores[group_idx] += 1
+                            st.rerun()
+
+# === Tab 3: Scoreboard (Individual) ===
+with tab_score:
+    st.header("🏆 Scoreboard (Individual)")
+    cd, ca = st.columns([2, 1])
+    with ca:
+        current_students = st.session_state.students
+        if current_students:
+            sel_stu = st.selectbox("Select Student", current_students)
+            pts = st.number_input("Points", -10, 10, 1)
+            c_update, c_clear = st.columns(2)
+            with c_update:
+                if st.button("Update Score", use_container_width=True):
+                    st.session_state.scores[sel_stu] += pts
+                    save_data(st.session_state.students, st.session_state.scores)
+                    st.success(f"Updated!")
+                    time.sleep(0.5)
+                    st.rerun()
+            with c_clear:
+                if st.button("🗑️ Reset Individuals", use_container_width=True):
+                    st.session_state.scores = {name: 0 for name in st.session_state.students}
+                    save_data(st.session_state.students, st.session_state.scores)
+                    st.success("Individual scores cleared!")
+                    time.sleep(0.5)
+                    st.rerun()
+        else: st.warning("No students available.")
+    with cd:
+        score_data = [{"Name": n, "Score": st.session_state.scores.get(n, 0)} for n in st.session_state.students]
+        if score_data:
+            df = pd.DataFrame(score_data).sort_values(by='Score', ascending=False)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            st.info("Scoreboard is empty.")
+            if st.button("Try Loading Default Data"):
+                st.session_state.students = DEFAULT_STUDENTS
+                st.session_state.scores = {n:0 for n in DEFAULT_STUDENTS}
+                save_data(DEFAULT_STUDENTS, st.session_state.scores)
+                st.rerun()
