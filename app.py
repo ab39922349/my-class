@@ -19,9 +19,9 @@ st.markdown("""
     .stDeployButton {display: none !important;}
     
     .main .block-container {
-        padding-top: 1rem !important; /* Reduce top padding */
+        padding-top: 1rem !important;
         padding-bottom: 1rem !important;
-        max-width: 95% !important; /* Use more screen width */
+        max-width: 95% !important;
     }
     
     /* Custom App Styles */
@@ -34,7 +34,7 @@ st.markdown("""
         padding: 25px; 
         border-radius: 10px; 
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        height: 100%; /* Fill height */
+        height: 100%;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -43,46 +43,59 @@ st.markdown("""
         color: #2c3e50; 
         font-weight: 800; 
         font-size: 28px; 
-        margin-bottom: 25px; 
+        margin-bottom: 20px; /* Reduced margin */
         line-height: 1.4;
     }
 
     /* ✨ BUTTON-STYLE RADIO OPTIONS ✨ */
+    
+    /* Hide the radio circle */
     div[role="radiogroup"] label > div:first-child {
         display: none !important;
     }
-    /* Vertical stack in the side column looks better, 
-       but keeping horizontal if space permits or creating a grid */
+    
+    /* Vertical stack layout */
     .stRadio [role="radiogroup"] {
-        flex-direction: column; /* Stack vertically on the side for better readability */
-        gap: 15px;
+        flex-direction: column;
+        gap: 12px;
         width: 100%;
     }
+    
+    /* The clickable label (Button) */
     .stRadio label {
         background-color: #ffffff;
-        padding: 20px 15px;
+        padding: 18px 20px;
         border-radius: 12px;
         border: 2px solid #e0e0e0;
         box-shadow: 0 4px 0px rgba(0,0,0,0.05);
         cursor: pointer;
         transition: all 0.1s ease;
-        text-align: left; /* Align text left for easier reading */
+        text-align: left;
         display: flex;
         align-items: center;
         width: 100%;
     }
+    
+    /* The text inside */
     .stRadio label p {
-        font-size: 22px !important;
+        font-size: 20px !important;
         font-weight: 600;
         color: #555;
         margin: 0;
         line-height: 1.3;
     }
+    
+    /* Hover Effect */
     .stRadio label:hover {
         border-color: #3498db;
         color: #3498db;
-        transform: translateX(5px); /* Slide effect */
+        transform: translateX(5px);
         background-color: #f0f8ff;
+    }
+    
+    /* Remove default label spacing */
+    .stRadio > label {
+        display: none !important;
     }
     
     /* Group Card Styling */
@@ -501,7 +514,7 @@ with tab_pic:
     with stab_lie:
         st.subheader("🤥 The Lying Game")
         
-        # ✨ Layout: Side-by-Side (Image Left, Options Right)
+        # Side-by-side
         col_img, col_opt = st.columns([1.5, 1])
         
         with col_img:
@@ -511,12 +524,10 @@ with tab_pic:
                 st.info("👋 Welcome! Click 'Start' to begin.")
                 
         with col_opt:
-            # Control Button (Top of right column)
             if st.button("📸 Start / Next Image", key="btn_pick_lie", use_container_width=True, type="primary"):
                 pick_next_image(["lie", "lying"], "lying")
                 st.rerun()
             
-            # Options (Only if image is loaded)
             if st.session_state.lying_image:
                 current_name_l = st.session_state.lying_image_name.lower()
                 st.markdown('<div class="sentence-box">', unsafe_allow_html=True)
@@ -528,9 +539,10 @@ with tab_pic:
                     "Touching or scratching themselves"
                 ]
                 
-                # Vertical layout for buttons in the side column looks better
+                # Selection Logic
                 selection_l = st.radio(
-                    "Select one option:", lying_options, 
+                    "Options", # Hidden Label
+                    lying_options, 
                     key=f"radio_lie_{current_name_l}_{st.session_state.quiz_counter}", 
                     index=None, label_visibility="collapsed"
                 )
@@ -548,7 +560,6 @@ with tab_pic:
     with stab_love:
         st.subheader("😍 The Love Game")
         
-        # ✨ Layout: Side-by-Side
         col_img_v, col_opt_v = st.columns([1.5, 1])
         
         with col_img_v:
@@ -574,7 +585,8 @@ with tab_pic:
                 ]
                 
                 selection_v = st.radio(
-                    "Select one option:", love_options, 
+                    "Options", 
+                    love_options, 
                     key=f"radio_love_{current_name_v}_{st.session_state.quiz_counter}", 
                     index=None, label_visibility="collapsed"
                 )
