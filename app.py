@@ -27,7 +27,7 @@ st.markdown("""
     /* Custom App Styles */
     .big-font { font-size:30px !important; font-weight: bold; color: #2c3e50; }
     
-    /* Sentence Box Styling (Right Column) */
+    /* Sentence Box Styling */
     .sentence-box { 
         background-color: #f8f9fa; 
         border-left: 8px solid #3498db; 
@@ -43,25 +43,13 @@ st.markdown("""
         color: #2c3e50; 
         font-weight: 800; 
         font-size: 28px; 
-        margin-bottom: 20px; /* Reduced margin */
+        margin-bottom: 20px; 
         line-height: 1.4;
     }
 
     /* ✨ BUTTON-STYLE RADIO OPTIONS ✨ */
-    
-    /* Hide the radio circle */
-    div[role="radiogroup"] label > div:first-child {
-        display: none !important;
-    }
-    
-    /* Vertical stack layout */
-    .stRadio [role="radiogroup"] {
-        flex-direction: column;
-        gap: 12px;
-        width: 100%;
-    }
-    
-    /* The clickable label (Button) */
+    div[role="radiogroup"] label > div:first-child { display: none !important; }
+    .stRadio [role="radiogroup"] { flex-direction: column; gap: 12px; width: 100%; }
     .stRadio label {
         background-color: #ffffff;
         padding: 18px 20px;
@@ -75,38 +63,14 @@ st.markdown("""
         align-items: center;
         width: 100%;
     }
-    
-    /* The text inside */
-    .stRadio label p {
-        font-size: 20px !important;
-        font-weight: 600;
-        color: #555;
-        margin: 0;
-        line-height: 1.3;
-    }
-    
-    /* Hover Effect */
-    .stRadio label:hover {
-        border-color: #3498db;
-        color: #3498db;
-        transform: translateX(5px);
-        background-color: #f0f8ff;
-    }
-    
-    /* Remove default label spacing */
-    .stRadio > label {
-        display: none !important;
-    }
+    .stRadio label p { font-size: 20px !important; font-weight: 600; color: #555; margin: 0; line-height: 1.3; }
+    .stRadio label:hover { border-color: #3498db; color: #3498db; transform: translateX(5px); background-color: #f0f8ff; }
+    .stRadio > label { display: none !important; }
     
     /* Group Card Styling */
     .group-card {
-        background-color: #fff;
-        padding: 15px;
-        border-radius: 10px;
-        border: 2px solid #d1d5db;
-        margin-bottom: 10px;
-        text-align: center;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        background-color: #fff; padding: 15px; border-radius: 10px; border: 2px solid #d1d5db;
+        margin-bottom: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
     .group-title { font-size: 20px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;}
     .group-score { font-size: 36px; font-weight: 900; color: #e74c3c; margin: 5px 0; }
@@ -140,7 +104,6 @@ def load_data():
             df = pd.read_csv(DATA_FILE)
             if df.empty: return DEFAULT_STUDENTS, default_scores
             if "Name" not in df.columns or "Score" not in df.columns: return DEFAULT_STUDENTS, default_scores
-            
             loaded_students = df["Name"].astype(str).tolist()
             loaded_scores = dict(zip(df["Name"].astype(str), df["Score"].astype(int)))
             for name in loaded_students:
@@ -155,13 +118,12 @@ if 'students' not in st.session_state or 'scores' not in st.session_state:
     st.session_state.students = l_students
     st.session_state.scores = l_scores
 
-# Separate states for two games
 if 'lying_image' not in st.session_state: st.session_state.lying_image = None
 if 'lying_image_name' not in st.session_state: st.session_state.lying_image_name = ""
 if 'love_image' not in st.session_state: st.session_state.love_image = None
 if 'love_image_name' not in st.session_state: st.session_state.love_image_name = ""
 
-# ✨ SEQUENTIAL INDEX TRACKING
+# ✨ SEQUENTIAL INDEX TRACKING (A-Z Loop)
 if 'lying_index' not in st.session_state: st.session_state.lying_index = 0
 if 'love_index' not in st.session_state: st.session_state.love_index = 0
 
@@ -171,7 +133,7 @@ if 'timer_end_time' not in st.session_state: st.session_state.timer_end_time = 0
 if 'timer_running' not in st.session_state: st.session_state.timer_running = False
 if 'quiz_counter' not in st.session_state: st.session_state.quiz_counter = 0
 
-# --- ✨ HELPER: PICK NEXT IMAGE (SEQUENTIAL) ---
+# --- ✨ HELPER: PICK NEXT IMAGE (SEQUENTIAL LOOP) ---
 def pick_next_image(keywords, state_prefix):
     if isinstance(keywords, str): keywords = [keywords]
         
@@ -186,6 +148,7 @@ def pick_next_image(keywords, state_prefix):
     try:
         all_files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in valid_extensions]
         
+        # Filter files by keywords
         filtered_files = []
         for f in all_files:
             for k in keywords:
@@ -193,26 +156,34 @@ def pick_next_image(keywords, state_prefix):
                     filtered_files.append(f)
                     break
         
+        # Sort alphabetically to ensure consistent sequence
         filtered_files.sort()
         
         if not filtered_files:
             st.warning(f"⚠️ No images found matching: {', '.join(keywords)}.")
         else:
+            # Get current index for this game type
             idx_key = f"{state_prefix}_index"
             current_idx = st.session_state[idx_key]
             
+            # Loop back to 0 if we reached the end
             if current_idx >= len(filtered_files):
                 current_idx = 0
             
+            # Select image
             selected_img = filtered_files[current_idx]
             
+            # Update Path
             full_path = os.path.join(folder_path, selected_img)
             st.session_state[f"{state_prefix}_image"] = full_path
             st.session_state[f"{state_prefix}_image_name"] = selected_img.lower()
             
+            # Increment index for NEXT time
             next_idx = current_idx + 1
+            # If next index exceeds length, wrap to 0 (Silent Loop)
             if next_idx >= len(filtered_files):
                 next_idx = 0
+            
             st.session_state[idx_key] = next_idx
             
     except Exception as e: st.error(f"Error: {e}")
@@ -514,7 +485,6 @@ with tab_pic:
     with stab_lie:
         st.subheader("🤥 The Lying Game")
         
-        # Side-by-side
         col_img, col_opt = st.columns([1.5, 1])
         
         with col_img:
@@ -525,6 +495,7 @@ with tab_pic:
                 
         with col_opt:
             if st.button("📸 Start / Next Image", key="btn_pick_lie", use_container_width=True, type="primary"):
+                # Sequential Loop
                 pick_next_image(["lie", "lying"], "lying")
                 st.rerun()
             
@@ -539,9 +510,8 @@ with tab_pic:
                     "Touching or scratching themselves"
                 ]
                 
-                # Selection Logic
                 selection_l = st.radio(
-                    "Options", # Hidden Label
+                    "Options", 
                     lying_options, 
                     key=f"radio_lie_{current_name_l}_{st.session_state.quiz_counter}", 
                     index=None, label_visibility="collapsed"
@@ -627,73 +597,4 @@ with tab_group:
     with c_info:
         if st.session_state.groups:
             if st.button("🗑️ Reset Group Scores"):
-                st.session_state.group_scores = {i: 0 for i in range(len(st.session_state.groups))}
-                st.toast("Group scores cleared!")
-                time.sleep(0.5)
-                st.rerun()
-        else:
-            st.info("👈 Set size and click Generate to start battle!")
-
-    st.divider()
-
-    if st.session_state.groups:
-        num_groups = len(st.session_state.groups)
-        cols_per_row = 3 
-        for i in range(0, num_groups, cols_per_row):
-            row_cols = st.columns(cols_per_row)
-            for j in range(cols_per_row):
-                if i + j < num_groups:
-                    group_idx = i + j
-                    group_members = st.session_state.groups[group_idx]
-                    with row_cols[j]:
-                        if group_idx not in st.session_state.group_scores:
-                            st.session_state.group_scores[group_idx] = 0
-                        g_score = st.session_state.group_scores[group_idx]
-                        st.markdown(f"""
-                        <div class="group-card">
-                            <div class="group-title">🛡️ Group {group_idx + 1}</div>
-                            <div class="group-score">{g_score} pts</div>
-                            <div class="group-members">{', '.join(group_members)}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        if st.button(f"➕ Add Point to G{group_idx + 1}", key=f"btn_g_{group_idx}", use_container_width=True):
-                            st.session_state.group_scores[group_idx] += 1
-                            st.rerun()
-
-# === Tab 3: Scoreboard (Individual) ===
-with tab_score:
-    st.header("🏆 Scoreboard (Individual)")
-    cd, ca = st.columns([2, 1])
-    with ca:
-        current_students = st.session_state.students
-        if current_students:
-            sel_stu = st.selectbox("Select Student", current_students)
-            pts = st.number_input("Points", -10, 10, 1)
-            c_update, c_clear = st.columns(2)
-            with c_update:
-                if st.button("Update Score", use_container_width=True):
-                    st.session_state.scores[sel_stu] += pts
-                    save_data(st.session_state.students, st.session_state.scores)
-                    st.success(f"Updated!")
-                    time.sleep(0.5)
-                    st.rerun()
-            with c_clear:
-                if st.button("🗑️ Reset Individuals", use_container_width=True):
-                    st.session_state.scores = {name: 0 for name in st.session_state.students}
-                    save_data(st.session_state.students, st.session_state.scores)
-                    st.success("Individual scores cleared!")
-                    time.sleep(0.5)
-                    st.rerun()
-        else: st.warning("No students available.")
-    with cd:
-        score_data = [{"Name": n, "Score": st.session_state.scores.get(n, 0)} for n in st.session_state.students]
-        if score_data:
-            df = pd.DataFrame(score_data).sort_values(by='Score', ascending=False)
-            st.dataframe(df, use_container_width=True, hide_index=True)
-        else:
-            st.info("Scoreboard is empty.")
-            if st.button("Try Loading Default Data"):
-                st.session_state.students = DEFAULT_STUDENTS
-                st.session_state.scores = {n:0 for n in DEFAULT_STUDENTS}
-                save_data(DEFAULT_STUDENTS, st.session_state.scores)
-                st.rerun()
+                st.session_state.group_scores = {i: 0 for i in range(len(st.session_state.
