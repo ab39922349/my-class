@@ -597,4 +597,73 @@ with tab_group:
     with c_info:
         if st.session_state.groups:
             if st.button("🗑️ Reset Group Scores"):
-                st.session_state.group_scores = {i: 0 for i in range(len(st.session_state.
+                st.session_state.group_scores = {i: 0 for i in range(len(st.session_state.groups))}
+                st.toast("Group scores cleared!")
+                time.sleep(0.5)
+                st.rerun()
+        else:
+            st.info("👈 Set size and click Generate to start battle!")
+
+    st.divider()
+
+    if st.session_state.groups:
+        num_groups = len(st.session_state.groups)
+        cols_per_row = 3 
+        for i in range(0, num_groups, cols_per_row):
+            row_cols = st.columns(cols_per_row)
+            for j in range(cols_per_row):
+                if i + j < num_groups:
+                    group_idx = i + j
+                    group_members = st.session_state.groups[group_idx]
+                    with row_cols[j]:
+                        if group_idx not in st.session_state.group_scores:
+                            st.session_state.group_scores[group_idx] = 0
+                        g_score = st.session_state.group_scores[group_idx]
+                        st.markdown(f"""
+                        <div class="group-card">
+                            <div class="group-title">🛡️ Group {group_idx + 1}</div>
+                            <div class="group-score">{g_score} pts</div>
+                            <div class="group-members">{', '.join(group_members)}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        if st.button(f"➕ Add Point to G{group_idx + 1}", key=f"btn_g_{group_idx}", use_container_width=True):
+                            st.session_state.group_scores[group_idx] += 1
+                            st.rerun()
+
+# === Tab 3: Scoreboard (Individual) ===
+with tab_score:
+    st.header("🏆 Scoreboard (Individual)")
+    cd, ca = st.columns([2, 1])
+    with ca:
+        current_students = st.session_state.students
+        if current_students:
+            sel_stu = st.selectbox("Select Student", current_students)
+            pts = st.number_input("Points", -10, 10, 1)
+            c_update, c_clear = st.columns(2)
+            with c_update:
+                if st.button("Update Score", use_container_width=True):
+                    st.session_state.scores[sel_stu] += pts
+                    save_data(st.session_state.students, st.session_state.scores)
+                    st.success(f"Updated!")
+                    time.sleep(0.5)
+                    st.rerun()
+            with c_clear:
+                if st.button("🗑️ Reset Individuals", use_container_width=True):
+                    st.session_state.scores = {name: 0 for name in st.session_state.students}
+                    save_data(st.session_state.students, st.session_state.scores)
+                    st.success("Individual scores cleared!")
+                    time.sleep(0.5)
+                    st.rerun()
+        else: st.warning("No students available.")
+    with cd:
+        score_data = [{"Name": n, "Score": st.session_state.scores.get(n, 0)} for n in st.session_state.students]
+        if score_data:
+            df = pd.DataFrame(score_data).sort_values(by='Score', ascending=False)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            st.info("Scoreboard is empty.")
+            if st.button("Try Loading Default Data"):
+                st.session_state.students = DEFAULT_STUDENTS
+                st.session_state.scores = {n:0 for n in DEFAULT_STUDENTS}
+                save_data(DEFAULT_STUDENTS, st.session_state.scores)
+                st.rerun()
