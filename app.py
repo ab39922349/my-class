@@ -41,13 +41,6 @@ st.markdown("""
         font-size: 24px; 
         margin-bottom: 20px; 
     }
-    .sentence-item { 
-        font-size: 24px;
-        color: #2c3e50; 
-        margin-bottom: 15px; 
-        font-family: sans-serif; 
-        line-height: 1.6;
-    }
 
     /* ✨ HORIZONTAL BUTTON RADIO STYLING ✨ */
     /* Ensure the container uses flexbox for horizontal layout */
@@ -75,7 +68,7 @@ st.markdown("""
     
     /* The text inside */
     .stRadio label p {
-        font-size: 20px !important;
+        font-size: 18px !important; /* Slightly adjusted for 3 options */
         font-weight: 600;
         color: #2c3e50;
         margin: 0;
@@ -145,17 +138,19 @@ if 'students' not in st.session_state or 'scores' not in st.session_state:
     st.session_state.students = l_students
     st.session_state.scores = l_scores
 
-if 'current_image' not in st.session_state: st.session_state.current_image = None
-if 'current_image_name' not in st.session_state: st.session_state.current_image_name = ""
-if 'available_images' not in st.session_state: st.session_state.available_images = []
+# Separate states for two games
+if 'lying_image' not in st.session_state: st.session_state.lying_image = None
+if 'lying_image_name' not in st.session_state: st.session_state.lying_image_name = ""
+if 'love_image' not in st.session_state: st.session_state.love_image = None
+if 'love_image_name' not in st.session_state: st.session_state.love_image_name = ""
+
 if 'groups' not in st.session_state: st.session_state.groups = []
 if 'group_scores' not in st.session_state: st.session_state.group_scores = {}
-
 if 'timer_end_time' not in st.session_state: st.session_state.timer_end_time = 0
 if 'timer_running' not in st.session_state: st.session_state.timer_running = False
 
-# --- ✨ HELPER: PICK NEW IMAGE FUNCTION ---
-def pick_new_image():
+# --- ✨ HELPER: PICK SPECIFIC IMAGE ---
+def pick_specific_image(keyword, state_prefix):
     script_dir = os.path.dirname(os.path.abspath(__file__)) 
     folder_path = os.path.join(script_dir, "images")
     
@@ -165,21 +160,21 @@ def pick_new_image():
 
     valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
     try:
-        all_files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in valid_extensions]
-        if not all_files:
-            st.warning("⚠️ The 'images' folder is empty!")
+        # Filter files based on keyword
+        filtered_files = [f for f in os.listdir(folder_path) 
+                          if os.path.splitext(f)[1].lower() in valid_extensions 
+                          and keyword.lower() in f.lower()]
+        
+        if not filtered_files:
+            st.warning(f"⚠️ No images found containing '{keyword}'!")
         else:
-            if not st.session_state.available_images:
-                st.session_state.available_images = all_files.copy()
-                random.shuffle(st.session_state.available_images)
-                st.toast("🔄 All images shown! Reshuffling deck...", icon="🔀")
-            while st.session_state.available_images:
-                selected_img = st.session_state.available_images.pop()
-                full_path = os.path.join(folder_path, selected_img)
-                if os.path.exists(full_path):
-                    st.session_state.current_image = full_path
-                    st.session_state.current_image_name = selected_img.lower()
-                    break
+            selected_img = random.choice(filtered_files)
+            full_path = os.path.join(folder_path, selected_img)
+            
+            # Update specific session state variables based on prefix
+            st.session_state[f"{state_prefix}_image"] = full_path
+            st.session_state[f"{state_prefix}_image_name"] = selected_img.lower()
+            
     except Exception as e: st.error(f"Error: {e}")
 
 # --- Sidebar: Settings & Timer ---
@@ -466,98 +461,85 @@ def get_seating_chart_html(student_list):
 # --- Tabs ---
 tab_pic, tab_seat, tab_group, tab_score = st.tabs(["🖼️ Look & Say", "🪑 Seating Chart", "⚔️ Group Battle", "🏆 Scoreboard"])
 
-# === Tab 0: Look & Say (WITH HORIZONTAL QUIZ & AUTO ADVANCE) ===
+# === Tab 0: Look & Say (WITH TWO SEPARATE GAMES) ===
 with tab_pic:
-    st.header("🖼️ Look & Say: What is he/she doing?")
+    st.header("🖼️ Look & Say Games")
     
-    # ✨ SENTENCE MAP (For non-lying images)
-    sentence_map = {
-        "love": [
-            "I think they are in love, because __________.",
-            "I think he/she falls in love with him/her, because he/she is __________.",
-            "I think they really like each other, because __________."
-        ],
-        "run": [
-            "I think he/she is running, because he/she is late for __________.",
-            "I think he/she is rushing, because __________.",
-            "I think he/she is exercising, because he/she wants to be __________."
-        ],
-        "eat": [
-            "I think he/she is eating __________, because he/she looks __________.",
-            "I think he/she is having lunch, because it is __________.",
-            "I think the food looks __________, so he/she is __________."
-        ],
-        "sleep": [
-            "I think he/she is sleeping, because he/she feels __________.",
-            "I think he/she is taking a nap, because __________.",
-            "I think he/she is dreaming about __________."
-        ]
-    }
-    
-    default_sentences = [
-        "I think he/she is __________, because __________.", 
-        "I think he/she looks __________, because __________.", 
-        "I think the person is __________, because __________."
-    ]
-    
-    col_btn, col_img = st.columns([1, 3])
-    with col_btn:
-        st.markdown('<div class="instruction">Click to pick an image for discussion.</div>', unsafe_allow_html=True)
-        if st.button("📸 Pick Random Image", type="primary", use_container_width=True):
-            pick_new_image()
-            st.rerun()
+    # Create sub-tabs for the two games
+    stab_lie, stab_love = st.tabs(["🤥 The Lying Game", "😍 The Love Game"])
 
-    with col_img:
-        if st.session_state.current_image:
-            st.image(st.session_state.current_image, use_container_width=True)
-            current_name = st.session_state.current_image_name.lower()
+    # ====== GAME 1: LYING ======
+    with stab_lie:
+        st.subheader("🤥 The Lying Game")
+        col_btn_l, col_img_l = st.columns([1, 3])
+        with col_btn_l:
+            st.markdown('<div class="instruction">Click to get a "lying" image.</div>', unsafe_allow_html=True)
+            if st.button("📸 Pick 'Lying' Image", type="primary", use_container_width=True, key="btn_pick_lie"):
+                pick_specific_image("lie", "lying") # Look for "lie" in filename, save to "lying_image" state
+                st.rerun()
 
-            # ✨ MULTIPLE CHOICE LOGIC FOR "LYING" ✨
-            lying_keywords = ["lie", "lying"]
-            if any(k in current_name for k in lying_keywords):
-                st.markdown('<div class="sentence-box"><div class="sentence-title">🤔 What is a common sign of lying?</div>', unsafe_allow_html=True)
+        with col_img_l:
+            if st.session_state.lying_image:
+                st.image(st.session_state.lying_image, use_container_width=True)
+                current_name_l = st.session_state.lying_image_name.lower()
                 
+                st.markdown('<div class="sentence-box"><div class="sentence-title">🤔 What is a common sign of lying?</div>', unsafe_allow_html=True)
                 lying_options = [
                     "making stiff body movements",
                     "making eye movements",
                     "touching or scratching themselves"
                 ]
-                
-                # ✨ HORIZONTAL OPTIONS & AUTO-ADVANCE LOGIC
-                selection = st.radio(
-                    "Select one option:", 
-                    lying_options, 
-                    key=f"radio_{current_name}", # Unique key resets selection on image change
-                    index=None,                  # No default selection
-                    horizontal=True,             # Horizontal Layout
-                    label_visibility="collapsed"
+                selection_l = st.radio(
+                    "Select one option:", lying_options, 
+                    key=f"radio_lie_{current_name_l}", index=None, horizontal=True, label_visibility="collapsed"
                 )
                 
-                # Logic: If user picks ANY option -> Correct! -> Next Image
-                if selection:
+                if selection_l:
                     st.success("✅ Correct! That is a sign of lying!")
                     st.balloons()
-                    time.sleep(1.0) # Pause to show success
-                    pick_new_image() # Auto pick next
-                    st.rerun() # Refresh page
-                
+                    time.sleep(1.0)
+                    pick_specific_image("lie", "lying") # Auto pick next "lie" image
+                    st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
-                
             else:
-                # ✨ STANDARD SENTENCE LOGIC FOR OTHER IMAGES ✨
-                st.markdown('<div class="instruction">Please use the pattern: <b>"I think he/she is..., because..."</b></div>', unsafe_allow_html=True)
-                target_sentences = default_sentences
-                for key, sentences in sentence_map.items():
-                    if key in current_name:
-                        target_sentences = sentences
-                        break
+                st.info("👈 Please click the button to start the Lying Game.")
+
+    # ====== GAME 2: LOVE ======
+    with stab_love:
+        st.subheader("😍 The Love Game")
+        col_btn_v, col_img_v = st.columns([1, 3])
+        with col_btn_v:
+            st.markdown('<div class="instruction">Click to get a "love" image.</div>', unsafe_allow_html=True)
+            if st.button("📸 Pick 'Love' Image", type="primary", use_container_width=True, key="btn_pick_love"):
+                pick_specific_image("love", "love") # Look for "love" in filename, save to "love_image" state
+                st.rerun()
+
+        with col_img_v:
+            if st.session_state.love_image:
+                st.image(st.session_state.love_image, use_container_width=True)
+                current_name_v = st.session_state.love_image_name.lower()
                 
-                st.markdown('<div class="sentence-box"><div class="sentence-title">💡 Useful Expressions:</div>', unsafe_allow_html=True)
-                for s in target_sentences: 
-                    st.markdown(f'<div class="sentence-item">👉 {s}</div>', unsafe_allow_html=True)
+                st.markdown('<div class="sentence-box"><div class="sentence-title">🥰 What is a common sign of love/attraction?</div>', unsafe_allow_html=True)
+                # ✨ NEW LOVE OPTIONS ✨
+                love_options = [
+                    "Their eyes do the talking.",
+                    "They copy the person's actions.",
+                    "They try to get closer."
+                ]
+                selection_v = st.radio(
+                    "Select one option:", love_options, 
+                    key=f"radio_love_{current_name_v}", index=None, horizontal=True, label_visibility="collapsed"
+                )
+                
+                if selection_v:
+                    st.success("✅ Correct! That is a sign of attraction!")
+                    st.balloons()
+                    time.sleep(1.0)
+                    pick_specific_image("love", "love") # Auto pick next "love" image
+                    st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
-        else:
-            st.info("👈 Please click the button to start.")
+            else:
+                st.info("👈 Please click the button to start the Love Game.")
 
 # === Tab NEW: Seating Chart ===
 with tab_seat:
