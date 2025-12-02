@@ -42,45 +42,59 @@ st.markdown("""
         margin-bottom: 20px; 
     }
 
-    /* ✨ HORIZONTAL BUTTON RADIO STYLING ✨ */
-    /* Ensure the container uses flexbox for horizontal layout */
+    /* ✨ BUTTON-STYLE RADIO OPTIONS (NO CIRCLES) ✨ */
+    
+    /* 1. Hide the little circle (the first div inside the label) */
+    div[role="radiogroup"] label > div:first-child {
+        display: none !important;
+    }
+
+    /* 2. Container layout: Horizontal & Spaced */
     .stRadio [role="radiogroup"] {
         flex-direction: row;
-        gap: 10px;
+        gap: 15px;
         width: 100%;
     }
     
-    /* The clickable label */
+    /* 3. The Button Look (Label) */
     .stRadio label {
         background-color: #ffffff;
-        padding: 15px 10px;
-        border-radius: 10px;
-        border: 2px solid #bdc3c7;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        padding: 20px 10px; /* Taller buttons */
+        border-radius: 12px;
+        border: 2px solid #e0e0e0;
+        box-shadow: 0 4px 0px rgba(0,0,0,0.05); /* Slight 3D effect */
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.1s ease;
         text-align: center;
-        flex: 1; /* Make buttons equal width */
+        flex: 1; /* Equal width */
         display: flex;
         align-items: center;
         justify-content: center;
+        min-height: 80px; /* Ensure uniform height */
     }
     
-    /* The text inside */
+    /* 4. Text Styling */
     .stRadio label p {
-        font-size: 18px !important; /* Slightly adjusted for 3 options */
+        font-size: 20px !important;
         font-weight: 600;
-        color: #2c3e50;
+        color: #555;
         margin: 0;
+        line-height: 1.2;
     }
 
-    /* Hover & Selection */
+    /* 5. Hover Effect */
     .stRadio label:hover {
         border-color: #3498db;
-        background-color: #f0f8ff;
+        color: #3498db;
         transform: translateY(-2px);
+        box-shadow: 0 6px 0px rgba(0,0,0,0.1);
     }
 
+    /* 6. Selected State (Active) - Fake it via CSS focusing on the checked input sibling if possible, 
+       but Streamlit handles checking via JS re-renders. 
+       Since we auto-advance on click, we don't strictly need a 'checked' state visually persisting,
+       but usually clicking gives feedback. */
+    
     /* Group Card Styling */
     .group-card {
         background-color: #fff;
@@ -149,8 +163,12 @@ if 'group_scores' not in st.session_state: st.session_state.group_scores = {}
 if 'timer_end_time' not in st.session_state: st.session_state.timer_end_time = 0
 if 'timer_running' not in st.session_state: st.session_state.timer_running = False
 
-# --- ✨ HELPER: PICK SPECIFIC IMAGE ---
-def pick_specific_image(keyword, state_prefix):
+# --- ✨ HELPER: PICK SPECIFIC IMAGE (IMPROVED SEARCH) ---
+def pick_specific_image(keywords, state_prefix):
+    # keywords can be a single string or a list of strings
+    if isinstance(keywords, str):
+        keywords = [keywords]
+        
     script_dir = os.path.dirname(os.path.abspath(__file__)) 
     folder_path = os.path.join(script_dir, "images")
     
@@ -160,18 +178,23 @@ def pick_specific_image(keyword, state_prefix):
 
     valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
     try:
-        # Filter files based on keyword
-        filtered_files = [f for f in os.listdir(folder_path) 
-                          if os.path.splitext(f)[1].lower() in valid_extensions 
-                          and keyword.lower() in f.lower()]
+        # Check if file matches ANY of the keywords
+        all_files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in valid_extensions]
+        
+        filtered_files = []
+        for f in all_files:
+            for k in keywords:
+                if k.lower() in f.lower():
+                    filtered_files.append(f)
+                    break
         
         if not filtered_files:
-            st.warning(f"⚠️ No images found containing '{keyword}'!")
+            st.warning(f"⚠️ No images found matching: {', '.join(keywords)}.\nPlease check your filenames in the 'images' folder.")
         else:
             selected_img = random.choice(filtered_files)
             full_path = os.path.join(folder_path, selected_img)
             
-            # Update specific session state variables based on prefix
+            # Update specific session state variables
             st.session_state[f"{state_prefix}_image"] = full_path
             st.session_state[f"{state_prefix}_image_name"] = selected_img.lower()
             
@@ -475,7 +498,8 @@ with tab_pic:
         with col_btn_l:
             st.markdown('<div class="instruction">Click to get a "lying" image.</div>', unsafe_allow_html=True)
             if st.button("📸 Pick 'Lying' Image", type="primary", use_container_width=True, key="btn_pick_lie"):
-                pick_specific_image("lie", "lying") # Look for "lie" in filename, save to "lying_image" state
+                # Search for "lie" OR "lying"
+                pick_specific_image(["lie", "lying"], "lying") 
                 st.rerun()
 
         with col_img_l:
@@ -498,7 +522,7 @@ with tab_pic:
                     st.success("✅ Correct! That is a sign of lying!")
                     st.balloons()
                     time.sleep(1.0)
-                    pick_specific_image("lie", "lying") # Auto pick next "lie" image
+                    pick_specific_image(["lie", "lying"], "lying") # Auto pick next
                     st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
             else:
@@ -511,7 +535,7 @@ with tab_pic:
         with col_btn_v:
             st.markdown('<div class="instruction">Click to get a "love" image.</div>', unsafe_allow_html=True)
             if st.button("📸 Pick 'Love' Image", type="primary", use_container_width=True, key="btn_pick_love"):
-                pick_specific_image("love", "love") # Look for "love" in filename, save to "love_image" state
+                pick_specific_image("love", "love") 
                 st.rerun()
 
         with col_img_v:
@@ -535,7 +559,7 @@ with tab_pic:
                     st.success("✅ Correct! That is a sign of attraction!")
                     st.balloons()
                     time.sleep(1.0)
-                    pick_specific_image("love", "love") # Auto pick next "love" image
+                    pick_specific_image("love", "love") # Auto pick next
                     st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
             else:
