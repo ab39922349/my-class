@@ -43,37 +43,29 @@ st.markdown("""
     }
 
     /* ✨ BUTTON-STYLE RADIO OPTIONS (NO CIRCLES) ✨ */
-    
-    /* 1. Hide the little circle (the first div inside the label) */
     div[role="radiogroup"] label > div:first-child {
         display: none !important;
     }
-
-    /* 2. Container layout: Horizontal & Spaced */
     .stRadio [role="radiogroup"] {
         flex-direction: row;
         gap: 15px;
         width: 100%;
     }
-    
-    /* 3. The Button Look (Label) */
     .stRadio label {
         background-color: #ffffff;
-        padding: 20px 10px; /* Taller buttons */
+        padding: 20px 10px;
         border-radius: 12px;
         border: 2px solid #e0e0e0;
-        box-shadow: 0 4px 0px rgba(0,0,0,0.05); /* Slight 3D effect */
+        box-shadow: 0 4px 0px rgba(0,0,0,0.05);
         cursor: pointer;
         transition: all 0.1s ease;
         text-align: center;
-        flex: 1; /* Equal width */
+        flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: 80px; /* Ensure uniform height */
+        min-height: 80px;
     }
-    
-    /* 4. Text Styling */
     .stRadio label p {
         font-size: 20px !important;
         font-weight: 600;
@@ -81,19 +73,12 @@ st.markdown("""
         margin: 0;
         line-height: 1.2;
     }
-
-    /* 5. Hover Effect */
     .stRadio label:hover {
         border-color: #3498db;
         color: #3498db;
         transform: translateY(-2px);
         box-shadow: 0 6px 0px rgba(0,0,0,0.1);
     }
-
-    /* 6. Selected State (Active) - Fake it via CSS focusing on the checked input sibling if possible, 
-       but Streamlit handles checking via JS re-renders. 
-       Since we auto-advance on click, we don't strictly need a 'checked' state visually persisting,
-       but usually clicking gives feedback. */
     
     /* Group Card Styling */
     .group-card {
@@ -163,11 +148,12 @@ if 'group_scores' not in st.session_state: st.session_state.group_scores = {}
 if 'timer_end_time' not in st.session_state: st.session_state.timer_end_time = 0
 if 'timer_running' not in st.session_state: st.session_state.timer_running = False
 
-# --- ✨ HELPER: PICK SPECIFIC IMAGE (IMPROVED SEARCH) ---
+# ✨ NEW: Quiz Counter to fix balloon glitch (Force reset radio buttons)
+if 'quiz_counter' not in st.session_state: st.session_state.quiz_counter = 0
+
+# --- ✨ HELPER: PICK SPECIFIC IMAGE ---
 def pick_specific_image(keywords, state_prefix):
-    # keywords can be a single string or a list of strings
-    if isinstance(keywords, str):
-        keywords = [keywords]
+    if isinstance(keywords, str): keywords = [keywords]
         
     script_dir = os.path.dirname(os.path.abspath(__file__)) 
     folder_path = os.path.join(script_dir, "images")
@@ -178,9 +164,7 @@ def pick_specific_image(keywords, state_prefix):
 
     valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
     try:
-        # Check if file matches ANY of the keywords
         all_files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in valid_extensions]
-        
         filtered_files = []
         for f in all_files:
             for k in keywords:
@@ -189,12 +173,18 @@ def pick_specific_image(keywords, state_prefix):
                     break
         
         if not filtered_files:
-            st.warning(f"⚠️ No images found matching: {', '.join(keywords)}.\nPlease check your filenames in the 'images' folder.")
+            st.warning(f"⚠️ No images found matching: {', '.join(keywords)}.")
         else:
-            selected_img = random.choice(filtered_files)
+            # Attempt to pick a different image if possible
+            current_name = st.session_state.get(f"{state_prefix}_image_name", "")
+            if len(filtered_files) > 1 and current_name in filtered_files:
+                # Remove current to avoid repeat if possible
+                temp_list = [x for x in filtered_files if x != current_name]
+                selected_img = random.choice(temp_list)
+            else:
+                selected_img = random.choice(filtered_files)
+                
             full_path = os.path.join(folder_path, selected_img)
-            
-            # Update specific session state variables
             st.session_state[f"{state_prefix}_image"] = full_path
             st.session_state[f"{state_prefix}_image_name"] = selected_img.lower()
             
@@ -245,6 +235,7 @@ if st.sidebar.button("⚠️ Factory Reset"):
     st.session_state.scores = {name: 0 for name in DEFAULT_STUDENTS}
     st.session_state.groups = []
     st.session_state.group_scores = {}
+    st.session_state.quiz_counter = 0
     st.sidebar.success("Data reset!")
     time.sleep(0.5)
     st.rerun()
@@ -484,11 +475,10 @@ def get_seating_chart_html(student_list):
 # --- Tabs ---
 tab_pic, tab_seat, tab_group, tab_score = st.tabs(["🖼️ Look & Say", "🪑 Seating Chart", "⚔️ Group Battle", "🏆 Scoreboard"])
 
-# === Tab 0: Look & Say (WITH TWO SEPARATE GAMES) ===
+# === Tab 0: Look & Say ===
 with tab_pic:
     st.header("🖼️ Look & Say Games")
     
-    # Create sub-tabs for the two games
     stab_lie, stab_love = st.tabs(["🤥 The Lying Game", "😍 The Love Game"])
 
     # ====== GAME 1: LYING ======
@@ -498,7 +488,6 @@ with tab_pic:
         with col_btn_l:
             st.markdown('<div class="instruction">Click to get a "lying" image.</div>', unsafe_allow_html=True)
             if st.button("📸 Pick 'Lying' Image", type="primary", use_container_width=True, key="btn_pick_lie"):
-                # Search for "lie" OR "lying"
                 pick_specific_image(["lie", "lying"], "lying") 
                 st.rerun()
 
@@ -513,16 +502,20 @@ with tab_pic:
                     "making eye movements",
                     "touching or scratching themselves"
                 ]
+                
+                # Use quiz_counter in key to force fresh widget
                 selection_l = st.radio(
                     "Select one option:", lying_options, 
-                    key=f"radio_lie_{current_name_l}", index=None, horizontal=True, label_visibility="collapsed"
+                    key=f"radio_lie_{current_name_l}_{st.session_state.quiz_counter}", 
+                    index=None, horizontal=True, label_visibility="collapsed"
                 )
                 
                 if selection_l:
                     st.success("✅ Correct! That is a sign of lying!")
                     st.balloons()
+                    st.session_state.quiz_counter += 1 # Increment counter to reset keys next run
                     time.sleep(1.0)
-                    pick_specific_image(["lie", "lying"], "lying") # Auto pick next
+                    pick_specific_image(["lie", "lying"], "lying")
                     st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
             else:
@@ -544,22 +537,25 @@ with tab_pic:
                 current_name_v = st.session_state.love_image_name.lower()
                 
                 st.markdown('<div class="sentence-box"><div class="sentence-title">🥰 What is a common sign of love/attraction?</div>', unsafe_allow_html=True)
-                # ✨ NEW LOVE OPTIONS ✨
                 love_options = [
                     "Their eyes do the talking.",
                     "They copy the person's actions.",
                     "They try to get closer."
                 ]
+                
+                # Use quiz_counter in key
                 selection_v = st.radio(
                     "Select one option:", love_options, 
-                    key=f"radio_love_{current_name_v}", index=None, horizontal=True, label_visibility="collapsed"
+                    key=f"radio_love_{current_name_v}_{st.session_state.quiz_counter}", 
+                    index=None, horizontal=True, label_visibility="collapsed"
                 )
                 
                 if selection_v:
                     st.success("✅ Correct! That is a sign of attraction!")
                     st.balloons()
+                    st.session_state.quiz_counter += 1 # Increment
                     time.sleep(1.0)
-                    pick_specific_image("love", "love") # Auto pick next
+                    pick_specific_image("love", "love")
                     st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
             else:
