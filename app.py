@@ -37,8 +37,7 @@ st.markdown("""
     
     /* Sentence Box Styling - ULTRA CLEAN (No background, no border) */
     .sentence-box { 
-        /* Removed background-color, border, border-radius, box-shadow */
-        padding: 20px 5px; /* Adjusted padding slightly */
+        padding: 20px 5px; 
         height: 100%;
         display: flex;
         flex-direction: column;
@@ -506,7 +505,7 @@ with tab_pic:
             if st.session_state.lying_image:
                 current_name_l = st.session_state.lying_image_name.lower()
                 st.markdown('<div class="sentence-box">', unsafe_allow_html=True)
-                st.markdown('<div class="sentence-title">🤔 What is a common sign of lying?</div>', unsafe_allow_html=True)
+                st.markdown('<div class="sentence-title">🤔 What is the sign of lying?</div>', unsafe_allow_html=True)
                 
                 lying_options = [
                     "Making stiff body movements",
@@ -550,7 +549,7 @@ with tab_pic:
             if st.session_state.love_image:
                 current_name_v = st.session_state.love_image_name.lower()
                 st.markdown('<div class="sentence-box">', unsafe_allow_html=True)
-                st.markdown('<div class="sentence-title">🥰 What is a sign of attraction?</div>', unsafe_allow_html=True)
+                st.markdown('<div class="sentence-title">🥰 What is the sign of attraction?</div>', unsafe_allow_html=True)
                 
                 love_options = [
                     "Their eyes do the talking.",
