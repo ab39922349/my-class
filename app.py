@@ -554,7 +554,7 @@ with tab_pic:
                 love_options = [
                     "Their eyes do the talking.",
                     "They copy the person's actions.",
-                    "They try to get closer."
+                    "They point their shoulders toward the person or try to get closer."
                 ]
                 
                 selection_v = st.radio(
